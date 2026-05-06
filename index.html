@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>مصحف الجماهيرية - نسخة الويب</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Amiri', serif; background-color: #f4eee0; user-select: none; }
+        .quran-page { max-width: 100%; height: auto; transition: transform 0.3s; }
+        .canvas-layer { position: absolute; top: 0; left: 0; pointer-events: none; }
+        .canvas-active { pointer-events: auto !important; cursor: crosshair; }
+        .note-sticker { position: absolute; background: rgba(255, 255, 0, 0.6); padding: 5px; border-radius: 4px; cursor: move; font-size: 14px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        [v-cloak] { display: none; }
+    </style>
+</head>
+<body class="overflow-hidden">
+
+<div id="app" v-cloak class="h-screen flex flex-col">
+    
+    <!-- الشريط العلوي -->
+    <header class="bg-[#8E6D40] text-[#EBCDAE] p-2 flex justify-between items-center shadow-lg z-50">
+        <button @click="showIndex = true" class="p-2">☰ الفهرس</button>
+        <div class="text-center">
+            <h1 class="font-bold">مصحف الجماهيرية</h1>
+            <p class="text-xs">صفحة {{ currentPage }}</p>
+        </div>
+        <div class="flex gap-2">
+            <button @click="showSearch = true" class="p-2">🔍</button>
+            <button @click="toggleDrawing" :class="{'bg-red-700': isDrawing}" class="p-2 rounded">✏️</button>
+        </div>
+    </header>
+
+    <!-- منطقة العرض الرئيسية -->
+    <main class="flex-1 relative overflow-hidden flex justify-center items-center p-2">
+        
+        <!-- طبقة الصورة -->
+        <div class="relative inline-block" id="page-container">
+            <img :src="'images/page' + currentPage + '.png'" 
+                 class="quran-page shadow-2xl border border-gray-300 rounded-sm"
+                 @touchstart="handleTouchStart" @touchend="handleTouchEnd">
+            
+            <!-- طبقة الرسم (Canvas) -->
+            <canvas id="drawingCanvas" 
+                    class="canvas-layer" 
+                    :class="{'canvas-active': isDrawing}"></canvas>
+
+            <!-- طبقة التدوين -->
+            <div v-for="note in notes[currentPage]" :key="note.id" 
+                 class="note-sticker" 
+                 :style="{ top: note.y + 'px', left: note.x + 'px' }"
+                 @mousedown="startMoveNote($event, note)"
+                 @touchstart="startMoveNote($event, note)">
+                {{ note.text }}
+                <button @click="deleteNote(note)" class="text-red-600 font-bold ml-2">×</button>
+            </div>
+        </div>
+
+        <!-- أزرار التنقل السريع -->
+        <button @click="prevPage" class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/10 p-4 rounded-full">‹</button>
+        <button @click="nextPage" class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/10 p-4 rounded-full">›</button>
+    </main>
+
+    <!-- شريط الصوت والتفسير السفلي -->
+    <footer class="bg-white/90 backdrop-blur-md border-t border-gray-200 p-4 z-40">
+        <div class="flex flex-col gap-3">
+            <!-- التحكم بالصوت -->
+            <div class="flex items-center justify-between">
+                <select v-model="selectedReciter" class="text-xs border rounded p-1">
+                    <option v-for="r in reciters" :value="r">{{ r.name }}</option>
+                </select>
+                <div class="flex items-center gap-4">
+                    <button @click="seekAudio(-10)" class="text-xl">⏪</button>
+                    <button @click="toggleAudio" class="bg-[#8E6D40] text-white w-12 h-12 rounded-full shadow-md flex items-center justify-center text-2xl">
+                        {{ isPlaying ? '⏸' : '▶️' }}
+                    </button>
+                    <button @click="seekAudio(10)" class="text-xl">⏩</button>
+                </div>
+                <button @click="showTafsir = true" class="text-sm bg-yellow-100 px-3 py-1 rounded-full border border-yellow-300">التفسير</button>
+            </div>
+            
+            <!-- شريط التقدم -->
+            <div class="w-full bg-gray-200 h-1 rounded-full overflow-hidden">
+                <div class="bg-[#8E6D40] h-full" :style="{ width: audioProgress + '%' }"></div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- نافذة الفهرس -->
+    <div v-if="showIndex" class="fixed inset-0 bg-black/50 z-[100] flex justify-end">
+        <div class="w-80 bg-white h-full shadow-xl flex flex-col p-4 overflow-y-auto">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h2 class="text-xl font-bold">الفهرس</h2>
+                <button @click="showIndex = false" class="text-2xl">×</button>
+            </div>
+            <div v-for="surah in quranData" :key="surah.number" 
+                 @click="goToPage(surah.verses[0].page)"
+                 class="p-3 border-bottom hover:bg-gray-50 cursor-pointer flex justify-between">
+                <span>{{ surah.number }}. {{ surah.name.ar }}</span>
+                <span class="text-gray-400">ص {{ surah.verses[0].page }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة البحث -->
+    <div v-if="showSearch" class="fixed inset-0 bg-white z-[100] p-4 flex flex-col">
+        <div class="flex gap-2 mb-4">
+            <input v-model="searchQuery" @input="doSearch" placeholder="ابحث عن آية أو كلمة..." class="flex-1 border p-2 rounded-lg outline-none focus:border-[#8E6D40]">
+            <button @click="showSearch = false; searchQuery = ''; searchResults = []" class="bg-gray-200 px-4 rounded-lg">إلغاء</button>
+        </div>
+        <div class="flex-1 overflow-y-auto no-scrollbar">
+            <div v-for="res in searchResults" :key="res.id" @click="goToPage(res.page)" class="p-4 border-b hover:bg-gray-50">
+                <p class="text-right leading-loose mb-1">{{ res.text.ar }}</p>
+                <div class="flex justify-between text-xs text-[#8E6D40]">
+                    <span>سورة {{ res.surahName }}</span>
+                    <span>صفحة {{ res.page }}</span>
+                </div>
+            </div>
+            <div v-if="searchResults.length === 0 && searchQuery.length > 2" class="text-center p-10 text-gray-400">لا توجد نتائج</div>
+        </div>
+    </div>
+
+    <!-- نافذة التفسير والتدوين -->
+    <div v-if="showTafsir" class="fixed inset-0 bg-black/50 z-[100] flex items-end">
+        <div class="bg-white w-full max-h-[80vh] rounded-t-3xl p-6 overflow-y-auto shadow-2xl relative">
+            <button @click="showTafsir = false" class="absolute top-4 left-4 text-2xl font-bold">×</button>
+            <h2 class="text-center font-bold text-xl mb-6 text-[#8E6D40]">تفسير آيات الصفحة {{ currentPage }}</h2>
+            
+            <!-- إضافة تدوين -->
+            <div class="mb-6 bg-blue-50 p-4 rounded-xl flex gap-2">
+                <input v-model="newNoteText" placeholder="اكتب ملاحظة لتعليقها..." class="flex-1 p-2 rounded border border-blue-200">
+                <button @click="addNote" class="bg-blue-600 text-white px-4 py-2 rounded-lg">تثبيت</button>
+            </div>
+
+            <div v-for="verse in currentPageVerses" :key="verse.number" class="mb-8 border-b pb-4">
+                <p class="text-right font-bold text-lg mb-2 text-gray-800">{{ verse.text.ar }} ({{ verse.number }})</p>
+                <div class="text-justify text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg" v-html="verse.tafsir"></div>
+                <div class="mt-2 text-sm italic text-blue-800">English: {{ verse.text.en }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- صوت خفي -->
+    <audio ref="quranAudio" @timeupdate="updateProgress" @ended="onAudioEnded"></audio>
+
+</div>
+
+<script>
+const { createApp, ref, onMounted, computed, watch } = Vue;
+
+createApp({
+    setup() {
+        const quranData = ref([]);
+        const currentPage = ref(1);
+        const showIndex = ref(false);
+        const showSearch = ref(false);
+        const showTafsir = ref(false);
+        const searchQuery = ref('');
+        const searchResults = ref([]);
+        const isPlaying = ref(false);
+        const audioProgress = ref(0);
+        const quranAudio = ref(null);
+        const isDrawing = ref(false);
+        const notes = ref(JSON.parse(localStorage.getItem('quran_notes') || '{}'));
+        const newNoteText = ref('');
+        
+        // القراء (روابط خارجية من Archive.org أو غيرها)
+        const reciters = ref([
+            { name: "الحصري (قالون)", url: "https://archive.org/download/c241010cccbbh/" },
+            { name: "الدوكالي محمد العالم", url: "https://archive.org/download/rabieaaa2017_yahoo_3438888888888/" },
+            { name: "علي الحذيفي", url: "https://archive.org/download/a50207aaaaaaaaa/" }
+        ]);
+        const selectedReciter = ref(reciters.value[0]);
+
+        // تحميل البيانات
+        onMounted(async () => {
+            try {
+                const response = await fetch('database.json');
+                quranData.value = await response.json();
+                initCanvas();
+            } catch (e) {
+                console.error("خطأ في تحميل ملف JSON: ", e);
+            }
+        });
+
+        // منطق البحث
+        const doSearch = () => {
+            if (searchQuery.value.length < 3) return;
+            const results = [];
+            quranData.value.forEach(surah => {
+                surah.verses.forEach(verse => {
+                    if (verse.text.normalized.includes(searchQuery.value) || verse.text.ar.includes(searchQuery.value)) {
+                        results.push({ ...verse, surahName: surah.name.ar });
+                    }
+                });
+            });
+            searchResults.value = results.slice(0, 50); // تحديد النتائج لسرعة المتصفح
+        };
+
+        const goToPage = (p) => {
+            currentPage.value = p;
+            showIndex.value = false;
+            showSearch.value = false;
+            showTafsir.value = false;
+            if (isPlaying.value) playAudio();
+            clearCanvas();
+        };
+
+        const nextPage = () => { if (currentPage.value < 603) goToPage(currentPage.value + 1); };
+        const prevPage = () => { if (currentPage.value > 1) goToPage(currentPage.value - 1); };
+
+        const currentPageVerses = computed(() => {
+            const allVerses = [];
+            quranData.value.forEach(s => {
+                s.verses.forEach(v => {
+                    if (v.page === currentPage.value) allVerses.push(v);
+                });
+            });
+            return allVerses;
+        });
+
+        // منطق الصوتيات
+        const toggleAudio = () => {
+            if (isPlaying.value) {
+                quranAudio.value.pause();
+                isPlaying.value = false;
+            } else {
+                playAudio();
+            }
+        };
+
+        const playAudio = () => {
+            const formattedPage = String(currentPage.value).padStart(3, '0');
+            quranAudio.value.src = `${selectedReciter.value.url}${formattedPage}.mp3`;
+            quranAudio.value.play();
+            isPlaying.value = true;
+        };
+
+        const updateProgress = () => {
+            audioProgress.value = (quranAudio.value.currentTime / quranAudio.value.duration) * 100;
+        };
+
+        const seekAudio = (sec) => { quranAudio.value.currentTime += sec; };
+        const onAudioEnded = () => { nextPage(); };
+
+        // منطق الرسم والتدوين
+        let canvas, ctx, drawing = false;
+        const initCanvas = () => {
+            canvas = document.getElementById('drawingCanvas');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+        };
+
+        const resizeCanvas = () => {
+            const img = document.querySelector('.quran-page');
+            if (img) {
+                canvas.width = img.clientWidth;
+                canvas.height = img.clientHeight;
+            }
+        };
+
+        const toggleDrawing = () => {
+            isDrawing.value = !isDrawing.value;
+            if (isDrawing.value) {
+                canvas.onmousedown = startDrawing;
+                canvas.onmousemove = draw;
+                canvas.onmouseup = stopDrawing;
+                canvas.ontouchstart = startDrawing;
+                canvas.ontouchmove = draw;
+                canvas.ontouchend = stopDrawing;
+            }
+        };
+
+        const startDrawing = (e) => {
+            drawing = true;
+            ctx.beginPath();
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+        };
+
+        const draw = (e) => {
+            if (!drawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        };
+
+        const stopDrawing = () => { drawing = false; };
+        const clearCanvas = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); };
+
+        const addNote = () => {
+            if (!newNoteText.value) return;
+            if (!notes.value[currentPage.value]) notes.value[currentPage.value] = [];
+            notes.value[currentPage.value].push({
+                id: Date.now(),
+                text: newNoteText.value,
+                x: 50, y: 50
+            });
+            saveNotes();
+            newNoteText.value = '';
+            showTafsir.value = false;
+        };
+
+        const deleteNote = (note) => {
+            notes.value[currentPage.value] = notes.value[currentPage.value].filter(n => n.id !== note.id);
+            saveNotes();
+        };
+
+        const saveNotes = () => {
+            localStorage.setItem('quran_notes', JSON.stringify(notes.value));
+        };
+
+        let activeNote = null;
+        const startMoveNote = (e, note) => {
+            activeNote = note;
+            const move = (me) => {
+                if (!activeNote) return;
+                const rect = document.getElementById('page-container').getBoundingClientRect();
+                activeNote.x = (me.clientX || me.touches[0].clientX) - rect.left - 20;
+                activeNote.y = (me.clientY || me.touches[0].clientY) - rect.top - 10;
+            };
+            const stop = () => {
+                activeNote = null;
+                saveNotes();
+                window.removeEventListener('mousemove', move);
+                window.removeEventListener('mouseup', stop);
+                window.removeEventListener('touchmove', move);
+                window.removeEventListener('touchend', stop);
+            };
+            window.addEventListener('mousemove', move);
+            window.addEventListener('mouseup', stop);
+            window.addEventListener('touchmove', move);
+            window.addEventListener('touchend', stop);
+        };
+
+        // التحكم باللمس لتقليب الصفحات
+        let touchStartX = 0;
+        const handleTouchStart = (e) => { touchStartX = e.touches[0].clientX; };
+        const handleTouchEnd = (e) => {
+            if (isDrawing.value) return;
+            const touchEndX = e.changedTouches[0].clientX;
+            if (touchStartX - touchEndX > 50) prevPage();
+            if (touchEndX - touchStartX > 50) nextPage();
+        };
+
+        return {
+            quranData, currentPage, showIndex, showSearch, showTafsir, 
+            searchQuery, searchResults, isPlaying, audioProgress, quranAudio,
+            reciters, selectedReciter, isDrawing, notes, newNoteText,
+            nextPage, prevPage, goToPage, doSearch, toggleAudio, seekAudio,
+            onAudioEnded, updateProgress, currentPageVerses, toggleDrawing,
+            addNote, deleteNote, startMoveNote, handleTouchStart, handleTouchEnd
+        };
+    }
+}).mount('#app');
+</script>
+</body>
+</html>
