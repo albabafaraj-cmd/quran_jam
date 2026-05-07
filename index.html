@@ -1,364 +1,476 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>مصحف الجماهيرية - نسخة الويب</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Amiri', serif; background-color: #f4eee0; user-select: none; }
-        .quran-page { max-width: 100%; height: auto; transition: transform 0.3s; }
-        .canvas-layer { position: absolute; top: 0; left: 0; pointer-events: none; }
-        .canvas-active { pointer-events: auto !important; cursor: crosshair; }
-        .note-sticker { position: absolute; background: rgba(255, 255, 0, 0.6); padding: 5px; border-radius: 4px; cursor: move; font-size: 14px; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        [v-cloak] { display: none; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="مصحف الجماهيرية">
+<meta name="theme-color" content="#5D4037">
+<title>مصحف الجماهيرية</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@300;400;600;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0&display=swap" rel="stylesheet">
+<style>
+/* التنسيقات الكاملة المستوحاة من ملف كلود مع تحسينات الأداء */
+:root {
+  --pr:#5D4037;--prl:#8D6E63;--prd:#3E2723;
+  --gold:#C9A84C;--gold-l:#F5E6C8;--gold-ll:#FFF8E7;
+  --bg:#FFFDF8;--sur:#FFF4E8;--sur2:#FFE8CC;
+  --bdr:#E8D5B7;--txt:#2C1810;--txt2:#6B4C3B;--txt3:#9B7B6B;
+  --shd:rgba(93,64,55,.18);--hdh:54px;--bth:58px;
+  --rad:16px;--rads:10px;--tr:.22s cubic-bezier(.4,0,.2,1);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+body.dark{--bg:#110A04;--sur:#1E1008;--sur2:#2A1610;--bdr:#3A2418;--txt:#F0E0CC;--txt2:#C9A07A;--txt3:#8A6A52;--shd:rgba(0,0,0,.5)}
+body.sepia{--bg:#F5EDD8;--sur:#EDE0C4;--sur2:#E0D0A8;--bdr:#C8B090;--txt:#3A2510;--txt2:#6A4830;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;-webkit-text-size-adjust:100%}
+body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--txt);transition:background var(--tr),color var(--tr);touch-action:manipulation;user-select:none;-webkit-user-select:none;}
+
+/* SPLASH SCREEN */
+#splash{position:fixed;inset:0;z-index:999;background:linear-gradient(150deg,var(--prd),var(--pr),#7A4A30);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity .6s;}
+#splash.gone{opacity:0;pointer-events:none;}
+.spl-spin{width:44px;height:44px;border:3px solid rgba(255,255,255,.2);border-top-color:var(--gold-l);border-radius:50%;animation:spin .75s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* APP LAYOUT */
+#app{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+#hdr{height:var(--hdh);background:var(--pr);display:flex;align-items:center;gap:6px;padding:0 10px;color:#fff;z-index:100;}
+#mv{flex:1;position:relative;overflow:hidden;background:var(--bg);display:flex;align-items:center;justify-content:center}
+#pc{width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+#pimg{max-width:100%;max-height:100%;object-fit:contain;pointer-events:none;z-index:1}
+
+/* DRAWING & NOTES */
+#dcanvas{position:absolute;inset:0;z-index:2;pointer-events:none;touch-action:none}
+#dcanvas.pen-on{pointer-events:all;cursor:crosshair}
+#nlayer{position:absolute;inset:0;z-index:3;pointer-events:none;}
+.tnote{position:absolute;background:rgba(255,240,60,.88);border-radius:6px;padding:6px;font-size:.76rem;cursor:move;pointer-events:all;box-shadow:0 2px 8px rgba(0,0,0,.2);z-index:10;border:1px solid rgba(0,0,0,.1);}
+
+/* AUDIO & PANELS */
+#apanel{background:var(--sur);border-top:1px solid var(--bdr);overflow:hidden;max-height:0;transition:max-height .3s ease;}
+#apanel.open{max-height:180px}
+#bbar{height:calc(var(--bth) + var(--safe-bottom));background:var(--sur);border-top:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;padding:0 10px;}
+
+.panel{position:fixed;bottom:0;left:0;right:0;background:var(--bg);border-radius:var(--rad) var(--rad) 0 0;z-index:250;transform:translateY(100%);transition:transform .32s ease;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 -4px 24px var(--shd)}
+.panel.open{transform:translateY(0)}
+.pbody{flex:1;overflow-y:auto;padding:16px;}
+.msym{font-family:'Material Symbols Rounded';}
+
+/* التنسيقات الإضافية للبحث والفهرس */
+.dli{display:flex;align-items:center;padding:12px;border-bottom:1px solid var(--bdr);cursor:pointer;}
+.sres{padding:12px;border-bottom:1px solid var(--bdr);cursor:pointer;}
+.sres-ar{font-family:'Amiri';font-size:1.1rem;direction:rtl;text-align:right;}
+</style>
 </head>
-<body class="overflow-hidden">
+<body>
 
-<div id="app" v-cloak class="h-screen flex flex-col">
-    
-    <!-- الشريط العلوي -->
-    <header class="bg-[#8E6D40] text-[#EBCDAE] p-2 flex justify-between items-center shadow-lg z-50">
-        <button @click="showIndex = true" class="p-2">☰ الفهرس</button>
-        <div class="text-center">
-            <h1 class="font-bold">مصحف الجماهيرية</h1>
-            <p class="text-xs">صفحة {{ currentPage }}</p>
+<div id="splash">
+  <div style="font-size:3rem">🕌</div>
+  <div style="color:var(--gold-l); font-family:'Amiri'; font-size:2rem; font-weight:700">مصحف الجماهيرية</div>
+  <div style="color:rgba(255,255,255,0.7)">جاري تحميل البيانات...</div>
+  <div class="spl-spin"></div>
+</div>
+
+<div id="app">
+  <header id="hdr">
+    <button class="hbtn" onclick="toggleDrawer()"><span class="msym">menu</span></button>
+    <div id="hdr-title" style="flex:1; text-align:center; font-family:'Amiri'; font-weight:700; color:var(--gold-l)">مصحف الجماهيرية</div>
+    <button id="pg-ind" onclick="showJumpDlg()" style="background:rgba(255,255,255,0.1); border:none; color:white; padding:4px 10px; border-radius:20px">1 / 603</button>
+    <button class="hbtn" onclick="openPanel('p-settings')"><span class="msym">settings</span></button>
+  </header>
+
+  <main id="mv">
+    <div id="pc" ontouchstart="handleTouchStart(event)" ontouchend="handleTouchEnd(event)">
+      <img id="pimg" alt="صفحة المصحف">
+      <canvas id="dcanvas"></canvas>
+      <div id="nlayer"></div>
+    </div>
+  </main>
+
+  <div id="apanel">
+    <div style="padding:15px">
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:0.7rem; color:var(--txt3)">
+        <span id="acur">0:00</span>
+        <span id="adur">0:00</span>
+      </div>
+      <div id="aprog" style="height:4px; background:var(--bdr); border-radius:2px; cursor:pointer" onclick="seekAudio(event)">
+        <div id="apfill" style="height:100%; background:var(--pr); width:0%; border-radius:2px"></div>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-around; margin-top:15px">
+        <button class="hbtn" onclick="togglePlayMode()"><span class="msym" id="mode-ico">repeat</span></button>
+        <button class="hbtn" onclick="skipAudio(-10)"><span class="msym">replay_10</span></button>
+        <button id="playbtn" onclick="toggleAudio()" style="width:50px; height:50px; background:var(--pr); color:white; border:none; border-radius:50%; display:flex; align-items:center; justify-content:center shadow:0 4px 10px var(--shd)">
+            <span class="msym" id="play-ico" style="font-size:2rem">play_arrow</span>
+        </button>
+        <button class="hbtn" onclick="skipAudio(10)"><span class="msym">forward_10</span></button>
+        <button class="hbtn" onclick="changeSpeed()"><span id="spd-txt" style="font-weight:700">1x</span></button>
+      </div>
+    </div>
+  </div>
+
+  <footer id="bbar">
+    <button class="navbtn" onclick="nextPage()"><span class="msym">arrow_forward</span></button>
+    <div style="display:flex; gap:8px">
+      <button class="bbtn" onclick="openPanel('p-search')"><span class="msym">search</span><span>بحث</span></button>
+      <button class="bbtn" onclick="openPanel('p-tafsir')"><span class="msym">menu_book</span><span>تفسير</span></button>
+      <button class="bbtn" onclick="toggleAudioPanel()"><span class="msym">headphones</span><span>صوت</span></button>
+      <button class="bbtn" id="btn-draw" onclick="togglePen()"><span class="msym">draw</span><span>رسم</span></button>
+    </div>
+    <button class="navbtn" onclick="prevPage()"><span class="msym">arrow_back</span></button>
+  </footer>
+</div>
+
+<div id="drawer" style="position:fixed; top:0; right:-320px; width:300px; height:100%; background:var(--bg); z-index:300; transition:0.3s; display:flex; flex-direction:column; box-shadow:-4px 0 20px rgba(0,0,0,0.1)">
+    <div style="padding:20px; background:var(--pr); color:white">
+        <div style="font-family:'Amiri'; font-size:1.3rem">فهرس السور</div>
+    </div>
+    <div id="drw-content" style="flex:1; overflow-y:auto"></div>
+</div>
+
+<div id="ovl" style="position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:200; display:none" onclick="closeAll()"></div>
+
+<div class="panel" id="p-search">
+    <div class="phdr"><span>البحث الذكي</span><button class="xcbtn" onclick="closeAll()">✕</button></div>
+    <div class="pbody">
+        <input type="text" id="s-inp" oninput="handleSearch(this.value)" placeholder="ابحث عن آية أو سورة..." style="width:100%; padding:12px; border-radius:12px; border:1px solid var(--bdr); outline:none">
+        <div id="s-results" style="margin-top:15px"></div>
+    </div>
+</div>
+
+<div class="panel" id="p-tafsir">
+    <div class="phdr"><span>التفسير والترجمة</span><button class="xcbtn" onclick="closeAll()">✕</button></div>
+    <div class="pbody" id="taf-content"></div>
+</div>
+
+<div class="panel" id="p-settings">
+    <div class="phdr"><span>إعدادات العرض</span><button class="xcbtn" onclick="closeAll()">✕</button></div>
+    <div class="pbody">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px">
+            <span>الوضع الليلي</span>
+            <button onclick="toggleNightMode()" id="night-tgl" style="padding:8px 20px; border-radius:20px; border:1px solid var(--pr); background:none">تشغيل</button>
         </div>
-        <div class="flex gap-2">
-            <button @click="showSearch = true" class="p-2">🔍</button>
-            <button @click="toggleDrawing" :class="{'bg-red-700': isDrawing}" class="p-2 rounded">✏️</button>
-        </div>
-    </header>
-
-    <!-- منطقة العرض الرئيسية -->
-    <main class="flex-1 relative overflow-hidden flex justify-center items-center p-2">
-        
-        <!-- طبقة الصورة -->
-        <div class="relative inline-block" id="page-container">
-            <img :src="'images/page' + currentPage + '.png'" 
-                 class="quran-page shadow-2xl border border-gray-300 rounded-sm"
-                 @touchstart="handleTouchStart" @touchend="handleTouchEnd">
-            
-            <!-- طبقة الرسم (Canvas) -->
-            <canvas id="drawingCanvas" 
-                    class="canvas-layer" 
-                    :class="{'canvas-active': isDrawing}"></canvas>
-
-            <!-- طبقة التدوين -->
-            <div v-for="note in notes[currentPage]" :key="note.id" 
-                 class="note-sticker" 
-                 :style="{ top: note.y + 'px', left: note.x + 'px' }"
-                 @mousedown="startMoveNote($event, note)"
-                 @touchstart="startMoveNote($event, note)">
-                {{ note.text }}
-                <button @click="deleteNote(note)" class="text-red-600 font-bold ml-2">×</button>
+        <div style="margin-bottom:20px">
+            <span style="display:block; margin-bottom:10px">سرعة التلاوة</span>
+            <div style="display:flex; gap:10px">
+                <button class="schip" onclick="setPlaybackSpeed(0.75)">0.75x</button>
+                <button class="schip" onclick="setPlaybackSpeed(1)">1x</button>
+                <button class="schip" onclick="setPlaybackSpeed(1.25)">1.25x</button>
             </div>
         </div>
-
-        <!-- أزرار التنقل السريع -->
-        <button @click="prevPage" class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/10 p-4 rounded-full">‹</button>
-        <button @click="nextPage" class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/10 p-4 rounded-full">›</button>
-    </main>
-
-    <!-- شريط الصوت والتفسير السفلي -->
-    <footer class="bg-white/90 backdrop-blur-md border-t border-gray-200 p-4 z-40">
-        <div class="flex flex-col gap-3">
-            <!-- التحكم بالصوت -->
-            <div class="flex items-center justify-between">
-                <select v-model="selectedReciter" class="text-xs border rounded p-1">
-                    <option v-for="r in reciters" :value="r">{{ r.name }}</option>
-                </select>
-                <div class="flex items-center gap-4">
-                    <button @click="seekAudio(-10)" class="text-xl">⏪</button>
-                    <button @click="toggleAudio" class="bg-[#8E6D40] text-white w-12 h-12 rounded-full shadow-md flex items-center justify-center text-2xl">
-                        {{ isPlaying ? '⏸' : '▶️' }}
-                    </button>
-                    <button @click="seekAudio(10)" class="text-xl">⏩</button>
-                </div>
-                <button @click="showTafsir = true" class="text-sm bg-yellow-100 px-3 py-1 rounded-full border border-yellow-300">التفسير</button>
-            </div>
-            
-            <!-- شريط التقدم -->
-            <div class="w-full bg-gray-200 h-1 rounded-full overflow-hidden">
-                <div class="bg-[#8E6D40] h-full" :style="{ width: audioProgress + '%' }"></div>
-            </div>
-        </div>
-    </footer>
-
-    <!-- نافذة الفهرس -->
-    <div v-if="showIndex" class="fixed inset-0 bg-black/50 z-[100] flex justify-end">
-        <div class="w-80 bg-white h-full shadow-xl flex flex-col p-4 overflow-y-auto">
-            <div class="flex justify-between items-center mb-4 border-b pb-2">
-                <h2 class="text-xl font-bold">الفهرس</h2>
-                <button @click="showIndex = false" class="text-2xl">×</button>
-            </div>
-            <div v-for="surah in quranData" :key="surah.number" 
-                 @click="goToPage(surah.verses[0].page)"
-                 class="p-3 border-bottom hover:bg-gray-50 cursor-pointer flex justify-between">
-                <span>{{ surah.number }}. {{ surah.name.ar }}</span>
-                <span class="text-gray-400">ص {{ surah.verses[0].page }}</span>
-            </div>
+        <div>
+            <span style="display:block; margin-bottom:10px">اختيار القارئ</span>
+            <select id="reciter-sel" onchange="changeReciter(this.value)" style="width:100%; padding:10px; border-radius:10px">
+                <option value="https://archive.org/download/c241010cccbbh/">محمود خليل الحصري</option>
+                <option value="https://archive.org/download/rabieaaa2017_yahoo_3438888888888/">الدوكالي محمد العالم</option>
+                <option value="https://archive.org/download/a50207aaaaaaaaa/">علي الحذيفي</option>
+            </select>
         </div>
     </div>
-
-    <!-- نافذة البحث -->
-    <div v-if="showSearch" class="fixed inset-0 bg-white z-[100] p-4 flex flex-col">
-        <div class="flex gap-2 mb-4">
-            <input v-model="searchQuery" @input="doSearch" placeholder="ابحث عن آية أو كلمة..." class="flex-1 border p-2 rounded-lg outline-none focus:border-[#8E6D40]">
-            <button @click="showSearch = false; searchQuery = ''; searchResults = []" class="bg-gray-200 px-4 rounded-lg">إلغاء</button>
-        </div>
-        <div class="flex-1 overflow-y-auto no-scrollbar">
-            <div v-for="res in searchResults" :key="res.id" @click="goToPage(res.page)" class="p-4 border-b hover:bg-gray-50">
-                <p class="text-right leading-loose mb-1">{{ res.text.ar }}</p>
-                <div class="flex justify-between text-xs text-[#8E6D40]">
-                    <span>سورة {{ res.surahName }}</span>
-                    <span>صفحة {{ res.page }}</span>
-                </div>
-            </div>
-            <div v-if="searchResults.length === 0 && searchQuery.length > 2" class="text-center p-10 text-gray-400">لا توجد نتائج</div>
-        </div>
-    </div>
-
-    <!-- نافذة التفسير والتدوين -->
-    <div v-if="showTafsir" class="fixed inset-0 bg-black/50 z-[100] flex items-end">
-        <div class="bg-white w-full max-h-[80vh] rounded-t-3xl p-6 overflow-y-auto shadow-2xl relative">
-            <button @click="showTafsir = false" class="absolute top-4 left-4 text-2xl font-bold">×</button>
-            <h2 class="text-center font-bold text-xl mb-6 text-[#8E6D40]">تفسير آيات الصفحة {{ currentPage }}</h2>
-            
-            <!-- إضافة تدوين -->
-            <div class="mb-6 bg-blue-50 p-4 rounded-xl flex gap-2">
-                <input v-model="newNoteText" placeholder="اكتب ملاحظة لتعليقها..." class="flex-1 p-2 rounded border border-blue-200">
-                <button @click="addNote" class="bg-blue-600 text-white px-4 py-2 rounded-lg">تثبيت</button>
-            </div>
-
-            <div v-for="verse in currentPageVerses" :key="verse.number" class="mb-8 border-b pb-4">
-                <p class="text-right font-bold text-lg mb-2 text-gray-800">{{ verse.text.ar }} ({{ verse.number }})</p>
-                <div class="text-justify text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg" v-html="verse.tafsir"></div>
-                <div class="mt-2 text-sm italic text-blue-800">English: {{ verse.text.en }}</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- صوت خفي -->
-    <audio ref="quranAudio" @timeupdate="updateProgress" @ended="onAudioEnded"></audio>
-
 </div>
 
 <script>
-const { createApp, ref, onMounted, computed, watch } = Vue;
+/* منطق التطبيق الكامل المستوحى من MainActivity.kt */
+const S = {
+    page: parseInt(localStorage.getItem('last_page')) || 1,
+    data: [],
+    audio: new Audio(),
+    isPlaying: false,
+    mode: 'OFF', // OFF, REPEAT, AUTO_NEXT
+    speed: 1.0,
+    reciter: localStorage.getItem('last_reciter') || 'https://archive.org/download/c241010cccbbh/',
+    pen: false,
+    night: false,
+    notes: JSON.parse(localStorage.getItem('quran_notes') || '{}'),
+    drawings: JSON.parse(localStorage.getItem('quran_drawings') || '{}')
+};
 
-createApp({
-    setup() {
-        const quranData = ref([]);
-        const currentPage = ref(1);
-        const showIndex = ref(false);
-        const showSearch = ref(false);
-        const showTafsir = ref(false);
-        const searchQuery = ref('');
-        const searchResults = ref([]);
-        const isPlaying = ref(false);
-        const audioProgress = ref(0);
-        const quranAudio = ref(null);
-        const isDrawing = ref(false);
-        const notes = ref(JSON.parse(localStorage.getItem('quran_notes') || '{}'));
-        const newNoteText = ref('');
-        
-        // القراء (روابط خارجية من Archive.org أو غيرها)
-        const reciters = ref([
-            { name: "الحصري (قالون)", url: "https://archive.org/download/c241010cccbbh/" },
-            { name: "الدوكالي محمد العالم", url: "https://archive.org/download/rabieaaa2017_yahoo_3438888888888/" },
-            { name: "علي الحذيفي", url: "https://archive.org/download/a50207aaaaaaaaa/" }
-        ]);
-        const selectedReciter = ref(reciters.value[0]);
-
-        // تحميل البيانات
-        onMounted(async () => {
-            try {
-                const response = await fetch('database.json');
-                quranData.value = await response.json();
-                initCanvas();
-            } catch (e) {
-                console.error("خطأ في تحميل ملف JSON: ", e);
-            }
+// 1. التهيئة وتحميل البيانات
+window.onload = async () => {
+    try {
+        const response = await fetch('database.json');
+        S.data = await response.json();
+        // معالجة البيانات للبحث كما في loadQuranData
+        S.data.forEach((surah, idx) => {
+            surah.verses.forEach(v => {
+                v.surahName = surah.name.ar;
+                v.surahIdx = idx + 1;
+            });
         });
-
-        // منطق البحث
-        const doSearch = () => {
-            if (searchQuery.value.length < 3) return;
-            const results = [];
-            quranData.value.forEach(surah => {
-                surah.verses.forEach(verse => {
-                    if (verse.text.normalized.includes(searchQuery.value) || verse.text.ar.includes(searchQuery.value)) {
-                        results.push({ ...verse, surahName: surah.name.ar });
-                    }
-                });
-            });
-            searchResults.value = results.slice(0, 50); // تحديد النتائج لسرعة المتصفح
-        };
-
-        const goToPage = (p) => {
-            currentPage.value = p;
-            showIndex.value = false;
-            showSearch.value = false;
-            showTafsir.value = false;
-            if (isPlaying.value) playAudio();
-            clearCanvas();
-        };
-
-        const nextPage = () => { if (currentPage.value < 603) goToPage(currentPage.value + 1); };
-        const prevPage = () => { if (currentPage.value > 1) goToPage(currentPage.value - 1); };
-
-        const currentPageVerses = computed(() => {
-            const allVerses = [];
-            quranData.value.forEach(s => {
-                s.verses.forEach(v => {
-                    if (v.page === currentPage.value) allVerses.push(v);
-                });
-            });
-            return allVerses;
-        });
-
-        // منطق الصوتيات
-        const toggleAudio = () => {
-            if (isPlaying.value) {
-                quranAudio.value.pause();
-                isPlaying.value = false;
-            } else {
-                playAudio();
-            }
-        };
-
-        const playAudio = () => {
-            const formattedPage = String(currentPage.value).padStart(3, '0');
-            quranAudio.value.src = `${selectedReciter.value.url}${formattedPage}.mp3`;
-            quranAudio.value.play();
-            isPlaying.value = true;
-        };
-
-        const updateProgress = () => {
-            audioProgress.value = (quranAudio.value.currentTime / quranAudio.value.duration) * 100;
-        };
-
-        const seekAudio = (sec) => { quranAudio.value.currentTime += sec; };
-        const onAudioEnded = () => { nextPage(); };
-
-        // منطق الرسم والتدوين
-        let canvas, ctx, drawing = false;
-        const initCanvas = () => {
-            canvas = document.getElementById('drawingCanvas');
-            ctx = canvas.getContext('2d');
-            resizeCanvas();
-            window.addEventListener('resize', resizeCanvas);
-        };
-
-        const resizeCanvas = () => {
-            const img = document.querySelector('.quran-page');
-            if (img) {
-                canvas.width = img.clientWidth;
-                canvas.height = img.clientHeight;
-            }
-        };
-
-        const toggleDrawing = () => {
-            isDrawing.value = !isDrawing.value;
-            if (isDrawing.value) {
-                canvas.onmousedown = startDrawing;
-                canvas.onmousemove = draw;
-                canvas.onmouseup = stopDrawing;
-                canvas.ontouchstart = startDrawing;
-                canvas.ontouchmove = draw;
-                canvas.ontouchend = stopDrawing;
-            }
-        };
-
-        const startDrawing = (e) => {
-            drawing = true;
-            ctx.beginPath();
-            ctx.strokeStyle = 'red';
-            ctx.lineWidth = 2;
-        };
-
-        const draw = (e) => {
-            if (!drawing) return;
-            const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX || e.touches[0].clientX) - rect.left;
-            const y = (e.clientY || e.touches[0].clientY) - rect.top;
-            ctx.lineTo(x, y);
-            ctx.stroke();
-        };
-
-        const stopDrawing = () => { drawing = false; };
-        const clearCanvas = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); };
-
-        const addNote = () => {
-            if (!newNoteText.value) return;
-            if (!notes.value[currentPage.value]) notes.value[currentPage.value] = [];
-            notes.value[currentPage.value].push({
-                id: Date.now(),
-                text: newNoteText.value,
-                x: 50, y: 50
-            });
-            saveNotes();
-            newNoteText.value = '';
-            showTafsir.value = false;
-        };
-
-        const deleteNote = (note) => {
-            notes.value[currentPage.value] = notes.value[currentPage.value].filter(n => n.id !== note.id);
-            saveNotes();
-        };
-
-        const saveNotes = () => {
-            localStorage.setItem('quran_notes', JSON.stringify(notes.value));
-        };
-
-        let activeNote = null;
-        const startMoveNote = (e, note) => {
-            activeNote = note;
-            const move = (me) => {
-                if (!activeNote) return;
-                const rect = document.getElementById('page-container').getBoundingClientRect();
-                activeNote.x = (me.clientX || me.touches[0].clientX) - rect.left - 20;
-                activeNote.y = (me.clientY || me.touches[0].clientY) - rect.top - 10;
-            };
-            const stop = () => {
-                activeNote = null;
-                saveNotes();
-                window.removeEventListener('mousemove', move);
-                window.removeEventListener('mouseup', stop);
-                window.removeEventListener('touchmove', move);
-                window.removeEventListener('touchend', stop);
-            };
-            window.addEventListener('mousemove', move);
-            window.addEventListener('mouseup', stop);
-            window.addEventListener('touchmove', move);
-            window.addEventListener('touchend', stop);
-        };
-
-        // التحكم باللمس لتقليب الصفحات
-        let touchStartX = 0;
-        const handleTouchStart = (e) => { touchStartX = e.touches[0].clientX; };
-        const handleTouchEnd = (e) => {
-            if (isDrawing.value) return;
-            const touchEndX = e.changedTouches[0].clientX;
-            if (touchStartX - touchEndX > 50) prevPage();
-            if (touchEndX - touchStartX > 50) nextPage();
-        };
-
-        return {
-            quranData, currentPage, showIndex, showSearch, showTafsir, 
-            searchQuery, searchResults, isPlaying, audioProgress, quranAudio,
-            reciters, selectedReciter, isDrawing, notes, newNoteText,
-            nextPage, prevPage, goToPage, doSearch, toggleAudio, seekAudio,
-            onAudioEnded, updateProgress, currentPageVerses, toggleDrawing,
-            addNote, deleteNote, startMoveNote, handleTouchStart, handleTouchEnd
-        };
+        renderIndex();
+        loadPage(S.page);
+        setTimeout(() => { document.getElementById('splash').classList.add('gone'); }, 1000);
+    } catch (e) {
+        console.error("Error loading JSON", e);
+        alert("تأكد من وجود ملف database.json بجانب ملف الـ HTML");
     }
-}).mount('#app');
+};
+
+// 2. إدارة الصفحات والمظهر
+function loadPage(p) {
+    if (p < 1 || p > 603) return;
+    S.page = p;
+    localStorage.setItem('last_page', p);
+    
+    // تحديث الصورة
+    const img = document.getElementById('pimg');
+    img.src = `images/page${String(p).padStart(3, '0')}.png`;
+    document.getElementById('pg-ind').textContent = `${p} / 603`;
+    
+    // تنظيف وتحميل الأدوات
+    clearCanvas();
+    loadDrawing();
+    renderNotes();
+    
+    // التمرير في الفهرس
+    if (S.isPlaying) playAudio(p);
+}
+
+function nextPage() { if (S.page < 603) loadPage(S.page + 1); }
+function prevPage() { if (S.page > 1) loadPage(S.page - 1); }
+
+// 3. محرك الصوت (ExoPlayer Logic)
+function toggleAudio() {
+    if (S.isPlaying) {
+        S.audio.pause();
+        S.isPlaying = false;
+    } else {
+        playAudio(S.page);
+    }
+    updateAudioUI();
+}
+
+function playAudio(p) {
+    const track = String(p).padStart(3, '0');
+    const url = `${S.reciter}${track}.mp3`;
+    
+    if (S.audio.src !== url) {
+        S.audio.src = url;
+    }
+    S.audio.playbackRate = S.speed;
+    S.audio.play().catch(e => console.log("Audio play failed", e));
+    S.isPlaying = true;
+}
+
+S.audio.ontimeupdate = () => {
+    if (!S.audio.duration) return;
+    const pct = (S.audio.currentTime / S.audio.duration) * 100;
+    document.getElementById('apfill').style.width = pct + '%';
+    document.getElementById('acur').textContent = formatTime(S.audio.currentTime);
+    document.getElementById('adur').textContent = formatTime(S.audio.duration);
+};
+
+S.audio.onended = () => {
+    if (S.mode === 'REPEAT') {
+        S.audio.currentTime = 0;
+        S.audio.play();
+    } else if (S.mode === 'AUTO_NEXT') {
+        nextPage();
+    } else {
+        S.isPlaying = false;
+        updateAudioUI();
+    }
+};
+
+function formatTime(s) {
+    const min = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${min}:${String(sec).padStart(2, '0')}`;
+}
+
+// 4. البحث (Normalization Logic)
+function normalizeArabic(text) {
+    return text.replace(/[أإآٱى]/g, 'ا').replace(/[ؤئ]/g, 'ء').replace(/ة/g, 'ه').replace(/[\u064B-\u065F]/g, '');
+}
+
+function handleSearch(q) {
+    const query = normalizeArabic(q);
+    if (query.length < 2) {
+        document.getElementById('s-results').innerHTML = "";
+        return;
+    }
+    
+    const results = [];
+    S.data.forEach(surah => {
+        surah.verses.forEach(v => {
+            if (normalizeArabic(v.text.ar).includes(query)) {
+                results.push({...v, surahName: surah.name.ar});
+            }
+        });
+    });
+    
+    let html = "";
+    results.slice(0, 50).forEach(r => {
+        html += `<div class="sres" onclick="loadPage(${r.page}); closeAll()">
+            <div class="sres-ar">${r.text.ar}</div>
+            <div style="font-size:0.7rem; color:var(--pr)">سورة ${r.surahName} - صفحة ${r.page}</div>
+        </div>`;
+    });
+    document.getElementById('s-results').innerHTML = html || "<div style='text-align:center'>لا توجد نتائج</div>";
+}
+
+// 5. الرسم والتدوين (Canvas & Sticky Notes)
+const canvas = document.getElementById('dcanvas');
+const ctx = canvas.getContext('2d');
+let drawing = false;
+
+function togglePen() {
+    S.pen = !S.pen;
+    canvas.classList.toggle('pen-on', S.pen);
+    document.getElementById('btn-draw').classList.toggle('on', S.pen);
+}
+
+function initCanvas() {
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+}
+
+canvas.addEventListener('touchstart', (e) => {
+    if (!S.pen) return;
+    drawing = true;
+    const t = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    ctx.beginPath();
+    ctx.moveTo(t.clientX - rect.left, t.clientY - rect.top);
+}, {passive: true});
+
+canvas.addEventListener('touchmove', (e) => {
+    if (!drawing) return;
+    const t = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    ctx.lineTo(t.clientX - rect.left, t.clientY - rect.top);
+    ctx.strokeStyle = S.night ? 'yellow' : 'red';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+}, {passive: true});
+
+canvas.addEventListener('touchend', () => {
+    drawing = false;
+    saveDrawing();
+});
+
+function saveDrawing() {
+    const data = canvas.toDataURL();
+    S.drawings[S.page] = data;
+    localStorage.setItem('quran_drawings', JSON.stringify(S.drawings));
+}
+
+function loadDrawing() {
+    const saved = S.drawings[S.page];
+    if (saved) {
+        const img = new Image();
+        img.onload = () => ctx.drawImage(img, 0, 0);
+        img.src = saved;
+    }
+}
+
+function clearCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// 6. الملاحظات (Notes Layer)
+function renderNotes() {
+    const layer = document.getElementById('nlayer');
+    layer.innerHTML = "";
+    const pageNotes = S.notes[S.page] || [];
+    pageNotes.forEach((n, i) => {
+        const div = document.createElement('div');
+        div.className = 'tnote';
+        div.textContent = n.text;
+        div.style.left = n.x + 'px';
+        div.style.top = n.y + 'px';
+        
+        // منطق السحب (Drag)
+        let offsetX, offsetY;
+        div.ontouchstart = (e) => {
+            offsetX = e.touches[0].clientX - div.offsetLeft;
+            offsetY = e.touches[0].clientY - div.offsetTop;
+        };
+        div.ontouchmove = (e) => {
+            n.x = e.touches[0].clientX - offsetX;
+            n.y = e.touches[0].clientY - offsetY;
+            div.style.left = n.x + 'px';
+            div.style.top = n.y + 'px';
+            e.preventDefault();
+        };
+        div.ontouchend = () => localStorage.setItem('quran_notes', JSON.stringify(S.notes));
+        
+        layer.appendChild(div);
+    });
+}
+
+// 7. مساعدات الواجهة
+function toggleDrawer() {
+    const drw = document.getElementById('drawer');
+    drw.style.right = drw.style.right === '0px' ? '-320px' : '0px';
+    document.getElementById('ovl').style.display = drw.style.right === '0px' ? 'block' : 'none';
+}
+
+function renderIndex() {
+    const content = document.getElementById('drw-content');
+    let html = "";
+    S.data.forEach(s => {
+        html += `<div class="dli" onclick="loadPage(${s.verses[0].page}); toggleDrawer()">
+            <span>${s.name.ar}</span>
+            <span style="font-size:0.8rem; color:var(--txt3)">ص ${s.verses[0].page}</span>
+        </div>`;
+    });
+    content.innerHTML = html;
+}
+
+function renderTafsir() {
+    const verses = S.data.flatMap(s => s.verses).filter(v => v.page === S.page);
+    let html = "";
+    verses.forEach(v => {
+        html += `<div style="margin-bottom:20px; border-bottom:1px solid var(--bdr); padding-bottom:10px">
+            <div style="font-family:'Amiri'; font-weight:700; color:var(--pr); font-size:1.1rem; text-align:right">${v.text.ar} (${v.number})</div>
+            <div style="margin-top:10px; line-height:1.6; text-align:justify">${v.tafsir}</div>
+            <div style="margin-top:5px; font-size:0.8rem; color:var(--txt3); direction:ltr; text-align:left">${v.text.en}</div>
+        </div>`;
+    });
+    document.getElementById('taf-content').innerHTML = html;
+}
+
+function openPanel(id) {
+    closeAll();
+    document.getElementById(id).classList.add('open');
+    document.getElementById('ovl').style.display = 'block';
+    if(id === 'p-tafsir') renderTafsir();
+}
+
+function closeAll() {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('open'));
+    document.getElementById('drawer').style.right = '-320px';
+    document.getElementById('ovl').style.display = 'none';
+}
+
+function toggleAudioPanel() {
+    const ap = document.getElementById('apanel');
+    ap.classList.toggle('open');
+}
+
+function updateAudioUI() {
+    document.getElementById('play-ico').textContent = S.isPlaying ? 'pause' : 'play_arrow';
+}
+
+function toggleNightMode() {
+    S.night = !S.night;
+    document.body.classList.toggle('dark', S.night);
+    document.getElementById('night-tgl').textContent = S.night ? 'إيقاف' : 'تشغيل';
+}
+
+// تحكم باللمس لتقليب الصفحات
+let tsX;
+function handleTouchStart(e) { tsX = e.touches[0].clientX; }
+function handleTouchEnd(e) {
+    if (S.pen) return;
+    const teX = e.changedTouches[0].clientX;
+    if (tsX - teX > 70) prevPage();
+    if (teX - tsX > 70) nextPage();
+}
+
+window.onresize = initCanvas;
+initCanvas();
 </script>
 </body>
 </html>
