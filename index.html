@@ -30,7 +30,14 @@ html
 }
 .sepia-mode{--bg:#F2E4C8;--cream:#EDD9A3;--linen:#E8D090;--txt:#4A3728;}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{height:100%;overflow:hidden;font-family:'Cairo',sans-serif;background:var(--bg);color:var(--txt);direction:rtl;touch-action:manipulation;}
+html,body{
+  height:100%;overflow:hidden;
+  font-family:'Cairo',sans-serif;background:var(--bg);color:var(--txt);direction:rtl;
+  touch-action:manipulation;
+  /* Prevent iOS rubber-band scroll on body */
+  position:fixed;width:100%;
+  -webkit-text-size-adjust:100%;  /* prevent iOS font size bump on rotation */
+}
 
 /* ── SPLASH ── */
 #splash{position:fixed;inset:0;background:linear-gradient(160deg,#4E342E,#5D4037 40%,#3E2723);
@@ -67,17 +74,41 @@ html,body{height:100%;overflow:hidden;font-family:'Cairo',sans-serif;background:
 #toolbar-left{display:flex;gap:2px;}
 
 /* ── MAIN CONTENT ── */
-#main-content{flex:1;overflow:hidden;position:relative;background:#333;}
+#main-content{
+  flex:1;min-height:0;          /* min-height:0 = critical so % heights work in children */
+  overflow:hidden;position:relative;background:#1a1a1a;
+  display:flex;flex-direction:column;
+}
 
 /* ── PAGE VIEWER ── */
-#page-viewer{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
-  position:relative;user-select:none;overflow:hidden;touch-action:none;}
-#page-wrap{position:relative;max-width:100%;max-height:100%;display:flex;
-  align-items:stretch;justify-content:center;transform-origin:center;transition:none;}
-#page-wrap.two-page{gap:2px;}
-.page-slot{position:relative;overflow:hidden;flex-shrink:0;}
-.page-slot img{display:block;max-width:100%;max-height:100%;object-fit:contain;
-  user-select:none;-webkit-user-drag:none;pointer-events:none;}
+#page-viewer{
+  flex:1;min-height:0;width:100%;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+  touch-action:none;user-select:none;-webkit-user-select:none;
+  background:#1a1a1a;
+}
+#page-wrap{
+  display:flex;align-items:center;justify-content:center;
+  width:100%;height:100%;
+  transform-origin:center center;
+}
+#page-wrap.two-page{gap:3px;}
+/* .page-slot size is set by JS (syncSlotToImage) so canvas aligns perfectly */
+.page-slot{
+  position:relative;
+  flex-shrink:0;
+  overflow:hidden;
+}
+.page-slot img{
+  display:block;
+  width:100%;height:100%;
+  object-fit:fill;      /* slot IS the image size — no letterbox needed */
+  -webkit-user-drag:none;
+  user-select:none;-webkit-user-select:none;
+  pointer-events:none;
+  -webkit-touch-callout:none;
+}
 .page-slot canvas.draw-layer{position:absolute;inset:0;pointer-events:none;}
 .page-slot canvas.draw-layer.pen-active{pointer-events:auto;cursor:crosshair;}
 .page-slot .notes-layer{position:absolute;inset:0;pointer-events:none;overflow:hidden;}
@@ -448,12 +479,50 @@ select.small-select{flex:1;padding:9px 12px;border:1px solid var(--border);borde
 ::-webkit-scrollbar-thumb:hover{background:var(--br-light);}
 
 /* ── RESPONSIVE ── */
-@media(min-width:768px){
-  #page-wrap{flex-direction:row-reverse;}
-  .page-slot.left-page img,.page-slot.right-page img{max-height:calc(100vh - var(--top-h) - 52px);}
+
+/* ── iPhone SE / small (< 375px) ── */
+@media(max-width:374px){
+  .topbar-btn{width:36px;height:36px;}
+  #topbar-title{font-size:.85rem;}
+  .sheet-body{padding:0 12px 12px;}
+  .drawer-item-name{font-size:.85rem;}
 }
+
+/* ── iPhone / small phones (375-767px portrait) ── */
+@media(max-width:767px){
+  #page-wrap.two-page{flex-direction:column;gap:2px;}
+  .modal{border-radius:20px 20px 0 0;position:fixed;bottom:0;left:0;right:0;max-width:100%!important;max-height:92vh;}
+  .modal-overlay{align-items:flex-end;padding:0;}
+}
+
+/* ── Tablet / iPad (768px+) ── */
+@media(min-width:768px){
+  #page-wrap.two-page{flex-direction:row-reverse;}
+  #drawer{width:300px;}
+}
+
+/* ── Desktop / iPad Pro (1024px+) ── */
 @media(min-width:1024px){
   #drawer{width:360px;}
+  #page-nav-prev,#page-nav-next{width:52px;height:100px;}
+}
+
+/* ── landscape phone ── */
+@media(max-height:500px) and (orientation:landscape){
+  :root{--top-h:44px;}
+  .topbar-btn{width:36px;height:36px;}
+  #topbar-title{font-size:.85rem;}
+  #topbar-title .page-num{display:none;}
+  #audio-mini{height:44px;}
+}
+
+/* ── iOS safe areas (notch/Dynamic Island) ── */
+@supports(padding-top:env(safe-area-inset-top)){
+  #topbar{
+    padding-top:calc(var(--safe-t) + 4px);
+    height:calc(var(--top-h) + var(--safe-t));
+  }
+  #audio-bar{padding-bottom:calc(var(--safe-b) + 4px);}
 }
 
 /* ── PROGRESS FOR AUDIO ── */
@@ -1188,25 +1257,43 @@ function nextPage(){goPage(state.currentPage+1);}
 
 function renderPage(){
   const p=state.currentPage;
+  const slotMain=document.getElementById('page-slot-main');
   const imgMain=document.getElementById('page-img-main');
   const slotSecond=document.getElementById('page-slot-second');
-  imgMain.src=`images/page${p}.jpg`;
-  imgMain.onerror=()=>{imgMain.src=`images/page${p}.png`;};
-  applyImageFilters(document.getElementById('page-slot-main'));
-  
+
+  // Load main page image; sync slot size when loaded
+  imgMain.onload=()=>{
+    syncSlotToImage(imgMain);
+    applyImageFilters(slotMain);
+    renderCanvasForPage(p,document.getElementById('canvas-main'));
+    renderNotesForPage(p,document.getElementById('notes-main'));
+  };
+  imgMain.onerror=()=>{
+    if(!imgMain.src.endsWith('.png')){imgMain.src=`images/page${p}.png`;}
+  };
+  // If same src (page already cached), onload may not fire — sync immediately
+  const newSrc=`images/page${p}.jpg`;
+  if(imgMain.src.endsWith(newSrc)&&imgMain.complete&&imgMain.naturalWidth){
+    syncSlotToImage(imgMain);
+    applyImageFilters(slotMain);
+    renderCanvasForPage(p,document.getElementById('canvas-main'));
+    renderNotesForPage(p,document.getElementById('notes-main'));
+  }else{
+    imgMain.src=newSrc;
+  }
+  applyImageFilters(slotMain);
+
   if(state.isTwoPageMode&&window.innerWidth>768){
     const p2=p%2===1?p+1:p-1;
     if(p2>=1&&p2<=state.totalPages){
       slotSecond.classList.remove('hidden');
       const imgSecond=document.getElementById('page-img-second');
+      imgSecond.onload=()=>{syncSlotToImage(imgSecond);applyImageFilters(slotSecond);};
+      imgSecond.onerror=()=>{if(!imgSecond.src.endsWith('.png'))imgSecond.src=`images/page${p2}.png`;};
       imgSecond.src=`images/page${p2}.jpg`;
-      imgSecond.onerror=()=>{imgSecond.src=`images/page${p2}.png`;};
       applyImageFilters(slotSecond);
     }else{slotSecond.classList.add('hidden');}
   }else{slotSecond.classList.add('hidden');}
-  
-  renderCanvasForPage(p, document.getElementById('canvas-main'));
-  renderNotesForPage(p, document.getElementById('notes-main'));
 }
 
 function applyImageFilters(slot){
@@ -1321,9 +1408,13 @@ function applyZoom(){
 }
 
 function clampPan(){
+  const slot=document.getElementById('page-slot-main');
   const viewer=document.getElementById('page-viewer');
-  const w=viewer.clientWidth,h=viewer.clientHeight;
-  const mx=(w*(currentScale-1))/2,my=(h*(currentScale-1))/2;
+  const vw=viewer.clientWidth, vh=viewer.clientHeight;
+  const sw=slot.clientWidth||vw, sh=slot.clientHeight||vh;
+  // Max pan = half the extra space created by scaling
+  const mx=Math.max(0,(sw*currentScale-vw)/2);
+  const my=Math.max(0,(sh*currentScale-vh)/2);
   panOffset.x=Math.max(-mx,Math.min(mx,panOffset.x));
   panOffset.y=Math.max(-my,Math.min(my,panOffset.y));
 }
@@ -2379,17 +2470,54 @@ function showToast(msg){
 }
 
 // ══════════════════════════════════════════════════════════
-// CANVAS RESIZE OBSERVER
+// SLOT / CANVAS SYNC — sizes slot to rendered image dimensions
 // ══════════════════════════════════════════════════════════
-function resizeCanvas(){
-  const slot=document.getElementById('page-slot-main');
-  const canvas=document.getElementById('canvas-main');
-  if(slot&&canvas){
-    const w=slot.clientWidth||320,h=slot.clientHeight||480;
+function syncSlotToImage(imgEl){
+  if(!imgEl||!imgEl.naturalWidth||!imgEl.naturalHeight)return;
+  const wrap=document.getElementById('page-wrap');
+  if(!wrap)return;
+
+  // Available space inside the viewer (minus two-page gap)
+  const twoPage=state.isTwoPageMode&&window.innerWidth>768;
+  const gap=twoPage?3:0;
+  const viewW=Math.floor((wrap.clientWidth-(twoPage?gap:0))/(twoPage?2:1));
+  const viewH=wrap.clientHeight;
+  if(!viewW||!viewH)return;
+
+  const natW=imgEl.naturalWidth;
+  const natH=imgEl.naturalHeight;
+  const scale=Math.min(viewW/natW, viewH/natH);
+  const w=Math.max(1,Math.round(natW*scale));
+  const h=Math.max(1,Math.round(natH*scale));
+
+  const slot=imgEl.parentElement;
+  slot.style.width=w+'px';
+  slot.style.height=h+'px';
+  // img fills slot exactly (object-fit:fill, but slot IS the image rect)
+  imgEl.style.width=w+'px';
+  imgEl.style.height=h+'px';
+
+  // Sync canvas dimensions
+  const canvas=slot.querySelector('canvas.draw-layer');
+  if(canvas){
+    canvas.style.width=w+'px';
+    canvas.style.height=h+'px';
     if(canvas.width!==w||canvas.height!==h){
       canvas.width=w;canvas.height=h;
-      renderCanvasForPage(state.currentPage,canvas);
     }
+    renderCanvasForPage(state.currentPage,canvas);
+  }
+  // Sync notes layer
+  const notes=slot.querySelector('.notes-layer');
+  if(notes)renderNotesForPage(state.currentPage,notes);
+}
+
+function resizeCanvas(){
+  const img=document.getElementById('page-img-main');
+  if(img&&img.naturalWidth)syncSlotToImage(img);
+  const img2=document.getElementById('page-img-second');
+  if(img2&&img2.naturalWidth&&!document.getElementById('page-slot-second').classList.contains('hidden')){
+    syncSlotToImage(img2);
   }
 }
 
@@ -2493,15 +2621,25 @@ let resizeTimer=null;
 window.addEventListener('resize',()=>{
   clearTimeout(resizeTimer);
   resizeTimer=setTimeout(()=>{
-    resizeCanvas();
-    if(state.isTwoPageMode)renderPage();
-  },200);
+    // Re-render page so slot is sized for new viewport
+    renderPage();
+  },150);
 });
 
-// Screen orientation change
+// Screen orientation change (iOS fires this before resize completes)
 window.addEventListener('orientationchange',()=>{
-  setTimeout(()=>{resizeCanvas();renderPage();},400);
+  // Wait for browser to complete rotation + layout
+  setTimeout(()=>{renderPage();},350);
+  setTimeout(()=>{renderPage();},700); // second pass for slow devices
 });
+
+// ResizeObserver on page-wrap for sub-pixel accuracy
+if(typeof ResizeObserver!=='undefined'){
+  new ResizeObserver(()=>{
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(resizeCanvas,100);
+  }).observe(document.getElementById('page-wrap'));
+}
 
 // ══════════════════════════════════════════════════════════
 // INIT — entry point
@@ -2525,13 +2663,12 @@ async function init(){
       const slot=document.getElementById('page-slot-main');
       // Set canvas size once image loads
       const img=document.getElementById('page-img-main');
-      img.addEventListener('load',()=>{
-        canvas.width=slot.clientWidth||slot.offsetWidth||320;
-        canvas.height=slot.clientHeight||slot.offsetHeight||480;
+      // syncSlotToImage handles canvas sizing — just setup drawing after first load
+      const setupOnce=()=>{
         setupDrawing(canvas,state.currentPage);
-        renderCanvasForPage(state.currentPage,canvas);
-        renderNotesForPage(state.currentPage,document.getElementById('notes-main'));
-      },{once:true});
+      };
+      if(img.complete&&img.naturalWidth){setupOnce();}
+      else{img.addEventListener('load',setupOnce,{once:true});}
     },600);
   },1800);
 
