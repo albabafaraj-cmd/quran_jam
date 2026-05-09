@@ -2193,7 +2193,8 @@ function openMoreMenu(){
   const menuItems=[
     {icon:'📖',label:'فتح التفسير',action:'openTafsir()'},
     {icon:'🎙️',label:'مشغل الصوت',action:'openReciterDialog()'},
-    {icon:'📿',label:'الأذكار',action:'openAdhkar()'},
+	{icon:'📲',label:'تثبيت التطبيق',action:'installApp()'},
+    //{icon:'📿',label:'الأذكار',action:'openAdhkar()'},
     {icon:'⚙️',label:'الإعدادات',action:'openSettings()'},
     {icon:'📊',label:'إحصائيات القراءة',action:'openStats()'},
     {icon:'⏱️',label:'ورد القراءة',action:'openWard()'},
@@ -2717,7 +2718,7 @@ async function init(){
     b.classList.toggle('active',v===state.playbackSpeed);
   });
 
-  // Load DB in background
+// Load DB in background
   loadDatabase();
 
   // Start daily reading timer
@@ -2725,36 +2726,47 @@ async function init(){
 
   // Populate search surah selector
   populateSearchSurahSelect();
-
-
 }
 
-// Prevent pull-to-refresh on iOS inside the viewer
+// منع السحب للأسفل للتحديث في آيفون داخل المتصفح
 document.getElementById('page-viewer')?.addEventListener('touchmove',e=>{
   if(currentScale>1)e.preventDefault();
 },{passive:false});
 
-// Start the app
-window.addEventListener('DOMContentLoaded',init);
-window.addEventListener('load',()=>{
-  // Failsafe: if DOMContentLoaded already fired
-  if(document.getElementById('app').classList.contains('hidden')){init();}
+// بدء التطبيق
+window.addEventListener('DOMContentLoaded', init);
+window.addEventListener('load', () => {
+  if(document.getElementById('app').classList.contains('hidden')){ init(); }
 });
-// تسجيل الـ Service Worker
+
+// --- إعدادات الـ PWA والتثبيت والعمل أوفلاين ---
+
+// 1. تسجيل الـ Service Worker
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js')
-    .then(() => console.log('Service Worker Registered ✓'));
+  navigator.serviceWorker.register('sw.js').then(() => console.log('Service Worker Registered ✓'));
 }
 
-// ميزة تثبيت التطبيق على أندرويد
+// 2. منطق التثبيت (أندرويد وكروم)
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  // يمكنك إظهار زر "تثبيت التطبيق" هنا إذا أردت
+  console.log("التطبيق جاهز للتثبيت ✓");
 });
 
-// وظيفة لمشاركة الصفحة (سفاري / آيفون)
+async function installApp() {
+  if (!deferredPrompt) {
+    showToast("التطبيق مثبت بالفعل أو المتصفح لا يدعم التثبيت حالياً");
+    return;
+  }
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  if (outcome === 'accepted') {
+    deferredPrompt = null;
+  }
+}
+
+// 3. وظيفة مشاركة التطبيق (سفاري / آيفون)
 function shareApp() {
   if (navigator.share) {
     navigator.share({
@@ -2767,29 +2779,8 @@ function shareApp() {
     showToast('تم نسخ الرابط لمشاركته ✓');
   }
 }
-// --- منطق التثبيت (PWA) ---
-let deferredPrompt;
 
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  console.log("التطبيق جاهز للتثبيت ✓");
-});
-
-async function installApp() {
-  if (!deferredPrompt) {
-    showToast("التطبيق مثبت بالفعل أو المتصفح لا يدعم التثبيت");
-    return;
-  }
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-  if (outcome === 'accepted') {
-    console.log('User accepted the install prompt');
-    deferredPrompt = null;
-  }
-}
-
-// --- دالة التنزيل في الخلفية المحسنة ---
+// 4. دالة التنزيل في الخلفية المحسنة
 async function downloadCurrentAudio() {
   if (!state.selectedReciter) return;
   const id = getAudioId(state.selectedReciter, state.currentPage);
@@ -2812,7 +2803,7 @@ async function downloadCurrentAudio() {
     document.body.removeChild(a);
     showToast('تم الحفظ بنجاح ✓');
   } catch (err) {
-    showToast('فشل التنزيل: تأكد من الاتصال');
+    showToast('فشل التنزيل: تأكد من الاتصال بالإنترنت');
   }
 }
 </script>
