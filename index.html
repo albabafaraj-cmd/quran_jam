@@ -2741,17 +2741,22 @@ window.addEventListener('load', () => {
 
 // --- إعدادات الـ PWA والتثبيت والعمل أوفلاين ---
 
-// 1. تسجيل الـ Service Worker
+// --- إعدادات التطبيق (PWA) ---
+
+// تسجيل الـ Service Worker
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').then(() => console.log('Service Worker Registered ✓'));
 }
 
-// 2. منطق التثبيت (أندرويد وكروم)
-let deferredPrompt;
+// تعريف متغير التثبيت مرة واحدة فقط
+let deferredPrompt = null;
+
 window.addEventListener('beforeinstallprompt', (e) => {
+  // منع المتصفح من إظهار النافذة التلقائية
   e.preventDefault();
+  // حفظ الحدث لاستخدامه عند الضغط على زر التثبيت
   deferredPrompt = e;
-  console.log("التطبيق جاهز للتثبيت ✓");
+  console.log("جاهز للتثبيت ✓");
 });
 
 async function installApp() {
@@ -2766,21 +2771,7 @@ async function installApp() {
   }
 }
 
-// 3. وظيفة مشاركة التطبيق (سفاري / آيفون)
-function shareApp() {
-  if (navigator.share) {
-    navigator.share({
-      title: 'مصحف الجماهيرية',
-      text: 'تطبيق القرآن الكريم برواية قالون - نسخة الويب',
-      url: window.location.href
-    }).catch(console.error);
-  } else {
-    copyToClipboard(window.location.href);
-    showToast('تم نسخ الرابط لمشاركته ✓');
-  }
-}
-
-// 4. دالة التنزيل في الخلفية المحسنة
+// دالة التنزيل في الخلفية المحسنة
 async function downloadCurrentAudio() {
   if (!state.selectedReciter) return;
   const id = getAudioId(state.selectedReciter, state.currentPage);
@@ -2803,7 +2794,7 @@ async function downloadCurrentAudio() {
     document.body.removeChild(a);
     showToast('تم الحفظ بنجاح ✓');
   } catch (err) {
-    showToast('فشل التنزيل: تأكد من الاتصال بالإنترنت');
+    showToast('فشل التنزيل: تأكد من الاتصال');
   }
 }
 </script>
