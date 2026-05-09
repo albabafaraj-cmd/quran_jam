@@ -3,6 +3,7 @@ html
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,viewport-fit=cover,user-scalable=yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -11,6 +12,8 @@ html
 <meta name="theme-color" content="#5D4037">
 <meta name="apple-mobile-web-app-title" content="مصحف الجماهيرية">
 <title>مصحف الجماهيرية</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Scheherazade+New:wght@400;700&family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
@@ -2751,13 +2754,6 @@ if ('serviceWorker' in navigator) {
 // تعريف متغير التثبيت مرة واحدة فقط
 let deferredPrompt = null;
 
-window.addEventListener('beforeinstallprompt', (e) => {
-  // منع المتصفح من إظهار النافذة التلقائية
-  e.preventDefault();
-  // حفظ الحدث لاستخدامه عند الضغط على زر التثبيت
-  deferredPrompt = e;
-  console.log("جاهز للتثبيت ✓");
-});
 
 async function installApp() {
   if (!deferredPrompt) {
