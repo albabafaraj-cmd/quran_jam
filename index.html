@@ -2239,7 +2239,7 @@ function renderWard(){
   document.getElementById('ward-footer').innerHTML=`
     <button class="btn-secondary" onclick="closeWard()">إغلاق</button>
     ${state.isWardActive?`<button class="btn-danger" onclick="stopWard()">إيقاف</button>`:''}
-    <button class="btn-primary" onclick="${state.isWardActive?'stopWard()':'startWard()}">${state.isWardActive?'إيقاف':'بدء الورد'}</button>`;
+    <button class="btn-primary" onclick="${state.isWardActive?'stopWard()':'startWard()'}">${state.isWardActive?'إيقاف':'بدء الورد'}</button>`;
 }
 
 function setWardTime(secs){state.wardSeconds=secs;renderWard();}
