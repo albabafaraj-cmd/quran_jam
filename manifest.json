@@ -1,0 +1,18 @@
+{
+  "name": "مصحف الجماهيرية",
+  "short_name": "المصحف",
+  "description": "مصحف الجماهيرية برواية قالون عن نافع - نسخة الويب الكاملة",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#5D4037",
+  "theme_color": "#5D4037",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2874/2874802.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
