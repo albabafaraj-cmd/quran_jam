@@ -2541,61 +2541,94 @@ document.addEventListener('keydown',e=>{
 // DATABASE LOADER
 // ══════════════════════════════════════════════════════════
 async function loadDatabase(){
+  // ── Helper: extract string from value that may be {ar,en} object or plain string ──
+  function strAr(v){ return(v&&typeof v==='object')?v.ar||v.arabic||Object.values(v)[0]||'':String(v||''); }
+  function strEn(v){ return(v&&typeof v==='object')?v.en||v.english||Object.values(v)[1]||'':String(v||''); }
+
+  // ── Try relative path first, then absolute GitHub Pages path ──
+  const paths=['./database.json','database.json'];
+  let raw=null,loadErr=null;
+  for(const path of paths){
+    try{
+      const resp=await fetch(path);
+      if(!resp.ok)throw new Error('HTTP '+resp.status);
+      raw=await resp.json();
+      console.log('✅ Loaded from:',path);
+      break;
+    }catch(e){loadErr=e;console.warn('fetch failed for',path,e.message);}
+  }
+  if(!raw){
+    console.error('❌ All fetch paths failed:',loadErr);
+    showToast('تعذّر تحميل قاعدة البيانات ⚠️');
+    return;
+  }
+
+  const verses=[];
+
   try{
-    const resp=await fetch('database.json');
-    if(!resp.ok)throw new Error('HTTP '+resp.status);
-    const raw=await resp.json();
-    // Support both array-of-surahs and flat-verses formats
-    const verses=[];
+    // ── Format A: [{number,name:{ar,en},verses:[{number,text:{ar,en},page,tafsir,...}]}] ──
     if(Array.isArray(raw)){
       raw.forEach(surah=>{
-        const surahName=surah.name||surah.transliteration||'';
-        const surahNumber=surah.number||surah.id||0;
-        const surahPage=SURAHS.find(s=>s.id===surahNumber)?.page||1;
-        const ayahs=surah.verses||surah.ayahs||surah.ayat||[];
+        const surahNumber = surah.number||surah.id||0;
+        const surahName   = strAr(surah.name)||surah.transliteration||'';
+        const surahPage   = SURAHS.find(s=>s.id===surahNumber)?.page||1;
+        const ayahs       = surah.verses||surah.ayahs||surah.ayat||[];
         ayahs.forEach(ay=>{
-          const page=ay.page||estimatePageForVerse(surahNumber,ay.number||ay.id||0,surahPage);
+          const vNum = ay.number||ay.id||ay.verse_number||0;
+          const page = ay.page||estimatePageForVerse(surahNumber,vNum,surahPage);
+          // text field can be: {ar,en} object  OR  plain string
+          const arText = (ay.text&&typeof ay.text==='object') ? strAr(ay.text)
+                         : (ay.ar||ay.arabic||ay.text||ay.content||'');
+          const enText = (ay.text&&typeof ay.text==='object') ? strEn(ay.text)
+                         : (ay.translation||ay.en||ay.english||'');
           verses.push({
-            surahNumber,surahName,
-            number:ay.number||ay.id||ay.verse_number||0,
-            text:{
-              ar:ay.text||ay.ar||ay.arabic||ay.content||'',
-              en:ay.translation||ay.en||ay.english||(ay.translations&&ay.translations.en)||''
-            },
-            transliteration:ay.transliteration||'',
-            tafsir:ay.tafsir||ay.tafseer||(ay.tafaseer&&ay.tafaseer[0]&&ay.tafaseer[0].text)||'',
-            page,
+            surahNumber, surahName, number:vNum, page,
+            text:{ ar:arText, en:enText },
+            transliteration: ay.transliteration||'',
+            tafsir: ay.tafsir||ay.tafseer||(Array.isArray(ay.tafaseer)?ay.tafaseer[0]?.text||'':''),
             normalizedText:''
           });
         });
       });
+
+    // ── Format B: {verses:[{surah_number,verse_number,text,tafsir,...}]} ──
     }else if(raw.verses||raw.data){
-      // flat structure {verses:[...]} or {data:[...]}
       const arr=raw.verses||raw.data||[];
       arr.forEach(ay=>{
-        const sNum=ay.surah_number||ay.chapter_id||ay.surahNumber||1;
-        const sName=(SURAHS.find(s=>s.id===sNum)||{}).name||'';
-        const sPage=SURAHS.find(s=>s.id===sNum)?.page||1;
-        const vNum=ay.verse_number||ay.number||ay.id||0;
-        const page=ay.page||estimatePageForVerse(sNum,vNum,sPage);
+        const sNum = ay.surah_number||ay.chapter_id||ay.surahNumber||1;
+        const sName= strAr(SURAHS.find(s=>s.id===sNum)?.name)||'';
+        const sPage= SURAHS.find(s=>s.id===sNum)?.page||1;
+        const vNum = ay.verse_number||ay.number||ay.id||0;
+        const page = ay.page||estimatePageForVerse(sNum,vNum,sPage);
         verses.push({
-          surahNumber:sNum,surahName:sName,number:vNum,
-          text:{ar:ay.text||ay.ar||ay.arabic||'',en:ay.translation||ay.en||''},
+          surahNumber:sNum, surahName:sName, number:vNum, page,
+          text:{
+            ar: strAr(ay.text)||ay.ar||ay.arabic||'',
+            en: strEn(ay.text)||ay.translation||ay.en||''
+          },
           transliteration:ay.transliteration||'',
           tafsir:ay.tafsir||ay.tafseer||'',
-          page,normalizedText:''
+          normalizedText:''
         });
       });
     }
-    // Normalize Arabic text for fast searching
-    verses.forEach(v=>{v.normalizedText=normalizeArabic(v.text.ar);});
-    state.allVerses=verses;
-    console.log(`✅ قاعدة البيانات محملة: ${verses.length} آية`);
-    showToast(`تم تحميل ${verses.length} آية ✓`);
-  }catch(err){
-    console.warn('⚠️ تعذر تحميل قاعدة البيانات:',err);
-    showToast('تعذر تحميل بيانات التفسير — تأكد أن database.json موجود');
+  }catch(parseErr){
+    console.error('❌ JSON parse error:',parseErr);
+    showToast('خطأ في قراءة البيانات: '+parseErr.message);
+    return;
   }
+
+  if(!verses.length){
+    console.warn('⚠️ No verses extracted — check JSON structure');
+    showToast('لم يتم استخراج أي آيات من قاعدة البيانات');
+    return;
+  }
+
+  // Normalize Arabic text for fast searching
+  verses.forEach(v=>{ v.normalizedText=normalizeArabic(v.text.ar); });
+  state.allVerses=verses;
+  console.log('✅ قاعدة البيانات محملة:',verses.length,'آية');
+  showToast('تم تحميل '+verses.length+' آية ✓');
 }
 
 function estimatePageForVerse(surahNum,verseNum,surahStartPage){
