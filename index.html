@@ -1832,39 +1832,7 @@ function togglePlaybackMode(mode){
   saveState();
 }
 
-async function downloadCurrentAudio(){
-  if(!state.selectedReciter) return;
-  const id = getAudioId(state.selectedReciter, state.currentPage);
-  const url = buildAudioUrl(state.selectedReciter, id);
-  const title = getAudioTitle(state.selectedReciter, id);
-  
-  showToast('جاري بدء التنزيل في الخلفية... انتظر قليلاً');
-  
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('فشل الوصول للملف');
-    
-    // تحويل الاستجابة إلى Blob (بيانات ثنائية)
-    const blob = await response.blob();
-    const blobUrl = window.URL.createObjectURL(blob);
-    
-    // إنشاء رابط وهمي للتحميل
-    const a = document.createElement('a');
-    a.style.display = 'none';
-    a.href = blobUrl;
-    a.download = `${state.selectedReciter.name} - ${title}.mp3`;
-    document.body.appendChild(a);
-    a.click();
-    
-    // تنظيف الذاكرة
-    window.URL.revokeObjectURL(blobUrl);
-    document.body.removeChild(a);
-    showToast('تم حفظ الملف بنجاح ✓');
-  } catch (error) {
-    console.error('Download error:', error);
-    showToast('فشل التنزيل، ربما بسبب قيود المتصفح أو الاتصال ⚠️');
-  }
-}
+
 
 // Audio event listeners
 audioEl.addEventListener('play',()=>{
@@ -2232,6 +2200,7 @@ function openMoreMenu(){
     {icon:'✏️',label:'أدوات الرسم والكتابة',action:"document.getElementById('drawing-toolbar').classList.toggle('hidden');document.getElementById('fab-note').classList.toggle('hidden');closeMore()"},
     {icon:'🔗',label:'مشاركة التطبيق',action:'shareApp()'},
     {icon:'🔢',label:'انتقل إلى صفحة',action:'closeMore();openGoToPageDialog()'},
+	{icon:'📲',label:'تثبيت التطبيق',action:'installApp()'},
   ];
   document.getElementById('more-menu-items').innerHTML=menuItems.map(i=>`
     <div class="drawer-item" onclick="${i.action};closeMore()">
@@ -2757,8 +2726,7 @@ async function init(){
   // Populate search surah selector
   populateSearchSurahSelect();
 
-  // Handle iOS "Add to Home Screen" PWA prompt
-  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();});
+
 }
 
 // Prevent pull-to-refresh on iOS inside the viewer
@@ -2797,6 +2765,54 @@ function shareApp() {
   } else {
     copyToClipboard(window.location.href);
     showToast('تم نسخ الرابط لمشاركته ✓');
+  }
+}
+// --- منطق التثبيت (PWA) ---
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  console.log("التطبيق جاهز للتثبيت ✓");
+});
+
+async function installApp() {
+  if (!deferredPrompt) {
+    showToast("التطبيق مثبت بالفعل أو المتصفح لا يدعم التثبيت");
+    return;
+  }
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  if (outcome === 'accepted') {
+    console.log('User accepted the install prompt');
+    deferredPrompt = null;
+  }
+}
+
+// --- دالة التنزيل في الخلفية المحسنة ---
+async function downloadCurrentAudio() {
+  if (!state.selectedReciter) return;
+  const id = getAudioId(state.selectedReciter, state.currentPage);
+  const url = buildAudioUrl(state.selectedReciter, id);
+  const title = getAudioTitle(state.selectedReciter, id);
+  
+  showToast('بدء التنزيل في الخلفية...');
+  
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = `${state.selectedReciter.name} - ${title}.mp3`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(blobUrl);
+    document.body.removeChild(a);
+    showToast('تم الحفظ بنجاح ✓');
+  } catch (err) {
+    showToast('فشل التنزيل: تأكد من الاتصال');
   }
 }
 </script>
