@@ -16,6 +16,8 @@ const SHELL_FILES = [
   './index.html',
   './manifest.json',
   './database.json',
+  './images/icon-192.png', // ضروري جداً للتثبيت
+  './images/icon-512.png'
 ];
 
 const FONT_FILE = './fonts/kfgqpc-uthman-taha-hafs.ttf';
