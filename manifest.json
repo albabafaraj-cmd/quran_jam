@@ -1,22 +1,42 @@
 {
   "name": "مصحف الجماهيرية",
   "short_name": "المصحف",
-  "description": "مصحف الجماهيرية برواية قالون عن نافع - نسخة الويب الكاملة",
-  "start_url": "index.html",
+  "description": "مصحف الجماهيرية برواية قالون عن نافع — قرآن كريم، تفسير، تلاوة",
+  "start_url": "./index.html?source=pwa",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#5D4037",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#4E342E",
   "theme_color": "#5D4037",
-  "orientation": "portrait-primary",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["education", "lifestyle", "religion"],
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "images/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "icon-512.png",
+      "src": "images/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "الصفحة الأولى",
+      "url": "./index.html?page=1",
+      "description": "افتح صفحة الفاتحة"
+    },
+    {
+      "name": "البحث",
+      "url": "./index.html?search=1",
+      "description": "بحث في آيات القرآن"
     }
   ]
 }
