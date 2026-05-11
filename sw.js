@@ -1,5 +1,5 @@
 /* مصحف الجماهيرية — Service Worker v3 */
-const VER         = 'v3';
+const VER         = 'v4';
 const CACHE_SHELL = 'qj-shell-' + VER;
 const CACHE_PAGES = 'qj-pages-' + VER;
 const CACHE_DATA  = 'qj-data-'  + VER;
