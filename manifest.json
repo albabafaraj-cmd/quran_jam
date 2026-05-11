@@ -1,7 +1,7 @@
 {
   "name": "مصحف الجماهيرية",
   "short_name": "المصحف",
-  "description": "مصحف الجماهيرية برواية قالون عن نافع — تفسير وتلاوة وبحث",
+  "description": "مصحف الجماهيرية برواية قالون عن نافع",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -11,12 +11,22 @@
   "lang": "ar",
   "dir": "rtl",
   "icons": [
-    { "src": "images/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "images/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ],
   "shortcuts": [
-    { "name": "الفاتحة", "url": "./index.html?page=1" },
-    { "name": "البحث",   "url": "./index.html?search=1" }
+    { "name": "الفاتحة", "url": "./index.html?p=1" },
+    { "name": "البحث",   "url": "./index.html?s=1" }
   ],
-  "categories": ["education","lifestyle"]
+  "categories": ["education", "lifestyle"]
 }

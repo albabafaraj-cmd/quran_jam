@@ -597,7 +597,7 @@ select.small-select{flex:1;padding:9px 12px;border:1px solid var(--border);borde
 .two-page-container{display:flex;align-items:stretch;gap:0;height:100%;direction:rtl;}
 </style>
 <style>
-@font-face{font-family:'KFGQPCHafs';src:url('fonts/kfgqpc-uthman-taha-hafs.ttf') format('truetype');font-weight:normal;font-style:normal;font-display:swap;}
+@font-face{font-family:'KFGQPCHafs';src:url('font/kfgqpc-uthman-taha-hafs.ttf'),url('fonts/kfgqpc-uthman-taha-hafs.ttf') format('truetype');font-weight:normal;font-style:normal;font-display:swap;}
 </style>
 </head>
 <body>
@@ -666,6 +666,11 @@ select.small-select{flex:1;padding:9px 12px;border:1px solid var(--border);borde
       <button class="topbar-btn" onclick="openBookmarks()" title="العلامات المرجعية">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
           <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+        </svg>
+      </button>
+      <button class="topbar-btn" id="install-topbar-btn" onclick="showInstallUI()" title="تثبيت التطبيق" style="display:none;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 16l-4-4h3V4h2v8h3z"/><path d="M20 18H4v2h16z"/>
         </svg>
       </button>
       <button class="topbar-btn" onclick="openMoreMenu()" title="المزيد">
@@ -2978,43 +2983,72 @@ let swReg=null;
 let deferredPrompt=null;
 
 async function registerSW(){
-  if(!('serviceWorker' in navigator))return;
+  if(!('serviceWorker' in navigator)){
+    console.warn('SW: not supported');return;
+  }
   try{
-    swReg=await navigator.serviceWorker.register('./sw.js',{scope:'./'});
-    console.log('✅ SW registered');
-    navigator.serviceWorker.addEventListener('message',e=>{
-      const {type,done,total}=e.data||{};
-      if(type==='CACHE_PROGRESS'){
-        const p=total?Math.round((done/total)*100):0;
-        const f=document.getElementById('pages-fill');
-        const s=document.getElementById('pages-stat');
-        if(f)f.style.width=p+'%';
-        if(s)s.textContent='تنزيل: '+done+' / '+total+' ('+p+'%)';
+    // Use the exact path — critical for GitHub Pages subfolder repos
+    const swUrl = new URL('./sw.js', location.href).href;
+    swReg = await navigator.serviceWorker.register(swUrl, {scope: './'});
+    console.log('✅ SW registered scope:', swReg.scope);
+
+    // Listen for messages
+    navigator.serviceWorker.addEventListener('message', e => {
+      const {type, done, total} = e.data || {};
+      if(type === 'CACHE_PROGRESS'){
+        const p = total ? Math.round((done/total)*100) : 0;
+        const f = document.getElementById('pages-fill');
+        const s = document.getElementById('pages-stat');
+        if(f) f.style.width = p + '%';
+        if(s) s.textContent = 'تنزيل: ' + done + ' / ' + total + ' (' + p + '%)';
       }
-      if(type==='CACHE_DONE'){
+      if(type === 'CACHE_DONE'){
         showToast('تم تنزيل الصفحات ✓');
         refreshOfflineInfo();
-        pDling=false;
-        const b=document.getElementById('pages-dl-btn');
-        if(b){b.textContent='⬇️ تنزيل الكل';b.onclick=startPagesDownload;}
+        pDling = false;
+        const b = document.getElementById('pages-dl-btn');
+        if(b){ b.textContent = '⬇️ تنزيل الكل'; b.onclick = startPagesDownload; }
       }
     });
-  }catch(e){console.warn('SW fail:',e);}
+
+    // Wait for SW to activate then check offline status
+    if(swReg.active){
+      setTimeout(refreshOfflineInfo, 1000);
+    } else {
+      swReg.addEventListener('updatefound', () => {
+        const newSW = swReg.installing;
+        newSW.addEventListener('statechange', () => {
+          if(newSW.state === 'activated') setTimeout(refreshOfflineInfo, 500);
+        });
+      });
+    }
+  } catch(e){
+    console.warn('SW fail:', e);
+  }
 }
 
 // ── Install prompt (Android / Desktop Chrome) ──
-window.addEventListener('beforeinstallprompt',e=>{
+window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
-  deferredPrompt=e;
-  if(!LS.get('pwa_dismissed'))setTimeout(()=>{
-    document.getElementById('pwa-banner')?.classList.add('show');
-  },3500);
+  deferredPrompt = e;
+  console.log('✅ beforeinstallprompt fired — install available');
+  // Show topbar install button
+  const btn = document.getElementById('install-topbar-btn');
+  if(btn) btn.style.display = 'flex';
+  // Show bottom banner after delay (if not dismissed)
+  if(!LS.get('pwa_dismissed')){
+    setTimeout(() => {
+      document.getElementById('pwa-banner')?.classList.add('show');
+    }, 2500);
+  }
 });
-window.addEventListener('appinstalled',()=>{
-  deferredPrompt=null;
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
   dismissBanner();
+  const btn = document.getElementById('install-topbar-btn');
+  if(btn) btn.style.display = 'none';
   showToast('✅ تم تثبيت مصحف الجماهيرية');
-  LS.set('pwa_installed',true);
+  LS.set('pwa_installed', true);
 });
 
 function dismissBanner(){
@@ -3034,17 +3068,27 @@ const isIOS=()=>/iP(hone|ad|od)/.test(navigator.userAgent)&&/WebKit/.test(naviga
 const isStandalone=()=>window.matchMedia('(display-mode:standalone)').matches||navigator.standalone===true;
 
 function showInstallUI(){
-  closeMore();
-  if(isStandalone()){showToast('التطبيق مثبّت بالفعل ✓');return;}
-  if(isIOS()){document.getElementById('ios-hint')?.classList.add('show');return;}
-  if(deferredPrompt){triggerInstall();return;}
-  showToast('في متصفحك: القائمة ← تثبيت التطبيق / Add to Home Screen');
+  if(typeof closeMore === 'function') closeMore();
+  if(isStandalone()){ showToast('التطبيق مثبّت بالفعل ✓'); return; }
+  if(isIOS()){
+    document.getElementById('ios-hint')?.classList.add('show');
+    return;
+  }
+  if(deferredPrompt){ triggerInstall(); return; }
+  // Fallback: show iOS-style instructions for Android/Desktop too
+  showToast('في متصفحك: القائمة (⋮) ← "تثبيت التطبيق" أو "Add to Home Screen"');
 }
 function closeIosHint(){document.getElementById('ios-hint')?.classList.remove('show');}
 function checkIosHint(){
-  if(isIOS()&&!isStandalone()&&!LS.get('ios_shown')){
-    LS.set('ios_shown',true);
-    setTimeout(()=>document.getElementById('ios-hint')?.classList.add('show'),5000);
+  if(isIOS() && !isStandalone()){
+    // Always show install button in topbar for iOS
+    const btn = document.getElementById('install-topbar-btn');
+    if(btn) btn.style.display = 'flex';
+    // Show hint sheet once
+    if(!LS.get('ios_shown')){
+      LS.set('ios_shown', true);
+      setTimeout(() => document.getElementById('ios-hint')?.classList.add('show'), 5000);
+    }
   }
 }
 
