@@ -1,183 +1,145 @@
 /* ══════════════════════════════════════════════════════════════
-   مصحف الجماهيرية — Service Worker
-   استراتيجية التخزين المؤقت:
-   - Shell (HTML/JS/CSS/Font/Manifest) → Cache First
-   - صور الصفحات → Cache First + تنزيل تدريجي
-   - الصوت → Network Only (كبير جداً للتخزين)
+   مصحف الجماهيرية — Service Worker v2
+   ── استراتيجية الكاش ──
+   • Shell + DB + Font  → Cache First (تُحمَّل فور التثبيت)
+   • صور الصفحات        → Cache First + تنزيل تدريجي
+   • الصوت من archive   → Network Only (كبير جداً، اختياري)
    ══════════════════════════════════════════════════════════════ */
 
-const VERSION        = 'v1.0.0';
-const SHELL_CACHE    = 'quran-jam-shell-' + VERSION;
-const PAGES_CACHE    = 'quran-jam-pages-' + VERSION;
-const DB_CACHE       = 'quran-jam-data-' + VERSION;
+const VER        = 'v2';
+const CACHE_SHELL = 'qj-shell-' + VER;
+const CACHE_PAGES = 'qj-pages-' + VER;
+const CACHE_DATA  = 'qj-data-'  + VER;
 
-// الملفات الأساسية التي تُخزَّن فوراً عند التثبيت
-const SHELL_FILES = [
+const SHELL_URLS = [
+  './',
   './index.html',
   './manifest.json',
   './database.json',
-  './images/icon-192.png', // ضروري جداً للتثبيت
-  './images/icon-512.png'
+  './fonts/kfgqpc-uthman-taha-hafs.ttf',
+  './images/icon-192.png',
+  './images/icon-512.png',
 ];
 
-const FONT_FILE = './fonts/kfgqpc-uthman-taha-hafs.ttf';
-
-// ── INSTALL ──────────────────────────────────────────────────
-self.addEventListener('install', event => {
+// ── INSTALL: cache shell immediately ────────────────────────
+self.addEventListener('install', e => {
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(SHELL_CACHE).then(cache => {
-      // Cache shell files; ignore errors for optional files
-      return Promise.allSettled(
-        SHELL_FILES.map(url =>
-          cache.add(url).catch(e => console.warn('SW: skip', url, e.message))
-        )
-      );
-    }).then(() =>
-      // Try caching the font too
-      caches.open(SHELL_CACHE).then(cache =>
-        cache.add(FONT_FILE).catch(() => {})
+  e.waitUntil(
+    caches.open(CACHE_SHELL).then(cache =>
+      Promise.allSettled(
+        SHELL_URLS.map(u => cache.add(u).catch(err => console.warn('SW skip:', u, err.message)))
       )
     )
   );
 });
 
-// ── ACTIVATE ─────────────────────────────────────────────────
-self.addEventListener('activate', event => {
-  event.waitUntil(
+// ── ACTIVATE: delete old caches ─────────────────────────────
+self.addEventListener('activate', e => {
+  e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(k => k !== SHELL_CACHE && k !== PAGES_CACHE && k !== DB_CACHE)
-          .map(k => caches.delete(k))
+      Promise.all(keys
+        .filter(k => ![CACHE_SHELL, CACHE_PAGES, CACHE_DATA].includes(k))
+        .map(k => caches.delete(k))
       )
     ).then(() => self.clients.claim())
   );
 });
 
 // ── FETCH ────────────────────────────────────────────────────
-self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-  const path = url.pathname;
+self.addEventListener('fetch', e => {
+  const { request } = e;
+  const url = new URL(request.url);
 
-  // 1. Audio from archive.org → Network only (too large, user controls download)
-  if (url.hostname.includes('archive.org') || url.hostname.includes('mp3quran.net')) {
-    return; // let browser handle normally
+  // Audio (archive.org / mp3quran) → pass through, never cache
+  if (url.hostname.includes('archive.org') || url.hostname.includes('mp3quran.net')) return;
+
+  // Page images → Cache First
+  if (/\/images\/page\d+\.(jpg|png)$/i.test(url.pathname)) {
+    e.respondWith(
+      caches.open(CACHE_PAGES).then(cache =>
+        cache.match(request).then(hit => hit || fetch(request).then(r => {
+          if (r.ok) cache.put(request, r.clone());
+          return r;
+        }).catch(() => new Response('', { status: 504 })))
+      )
+    );
+    return;
   }
 
-  // 2. Page images → Cache First (serve instantly if cached, else fetch+cache)
-  if (path.match(/\/images\/page\d+\.(jpg|png)$/i)) {
-    event.respondWith(
-      caches.open(PAGES_CACHE).then(cache =>
-        cache.match(event.request).then(cached => {
-          if (cached) return cached;
-          return fetch(event.request).then(response => {
-            if (response.ok) cache.put(event.request, response.clone());
-            return response;
-          }).catch(() => new Response('', { status: 504 }));
+  // database.json → Cache First, background refresh
+  if (url.pathname.endsWith('database.json')) {
+    e.respondWith(
+      caches.open(CACHE_DATA).then(cache =>
+        cache.match(request).then(hit => {
+          const network = fetch(request).then(r => { if (r.ok) cache.put(request, r.clone()); return r; }).catch(() => null);
+          return hit || network;
         })
       )
     );
     return;
   }
 
-  // 3. database.json → Cache First
-  if (path.endsWith('database.json')) {
-    event.respondWith(
-      caches.open(DB_CACHE).then(cache =>
-        cache.match(event.request).then(cached => {
-          if (cached) return cached;
-          return fetch(event.request).then(r => {
-            if (r.ok) cache.put(event.request, r.clone());
-            return r;
-          });
-        })
-      )
-    );
-    return;
-  }
-
-  // 4. Shell files (HTML, manifest, font) → Cache First
+  // Shell files (HTML / manifest / font / icons)
   if (
-    path.endsWith('.html') || path.endsWith('.json') ||
-    path.endsWith('.ttf')  || path.endsWith('.woff2') ||
-    path.endsWith('.woff') || path === '/'
+    url.pathname.endsWith('.html') || url.pathname.endsWith('.json') ||
+    url.pathname.endsWith('.ttf')  || url.pathname.endsWith('.png')  ||
+    url.pathname === '/' || url.pathname === ''
   ) {
-    event.respondWith(
-      caches.open(SHELL_CACHE).then(cache =>
-        cache.match(event.request).then(cached => {
-          if (cached) return cached;
-          return fetch(event.request).then(r => {
-            if (r.ok) cache.put(event.request, r.clone());
-            return r;
-          }).catch(() => cached || new Response('Offline', { status: 503 }));
-        })
+    e.respondWith(
+      caches.open(CACHE_SHELL).then(cache =>
+        cache.match(request).then(hit =>
+          hit || fetch(request).then(r => { if (r.ok) cache.put(request, r.clone()); return r; })
+                               .catch(() => hit || new Response('Offline', { status: 503 }))
+        )
       )
     );
     return;
   }
 
-  // 5. Everything else → Network with cache fallback
-  event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+  // Google Fonts & everything else → network with shell fallback
+  e.respondWith(
+    fetch(request).catch(() => caches.match(request).then(r => r || new Response('', { status: 504 })))
   );
 });
 
-// ── MESSAGES from the page ───────────────────────────────────
-self.addEventListener('message', async event => {
-  const { type, data } = event.data || {};
+// ── MESSAGES ─────────────────────────────────────────────────
+self.addEventListener('message', async e => {
+  const { type, data } = e.data || {};
 
-  // Download a batch of pages for offline use
   if (type === 'CACHE_PAGES') {
-    const { pages } = data; // array of page numbers
-    const cache = await caches.open(PAGES_CACHE);
+    const pages = data?.pages || [];
+    const cache = await caches.open(CACHE_PAGES);
     let done = 0;
     for (const p of pages) {
+      if (!self._cachingActive) break; // allow cancel
       const url = `./images/page${p}.jpg`;
       try {
-        const already = await cache.match(url);
-        if (!already) {
+        if (!(await cache.match(url))) {
           const r = await fetch(url);
           if (r.ok) await cache.put(url, r);
         }
-        done++;
-        // Report progress every 10 pages
-        if (done % 10 === 0 || done === pages.length) {
-          event.source.postMessage({ type: 'CACHE_PROGRESS', done, total: pages.length });
-        }
-      } catch (e) {
-        done++;
-      }
+      } catch (_) {}
+      done++;
+      if (done % 10 === 0 || done === pages.length)
+        e.source?.postMessage({ type: 'CACHE_PROGRESS', done, total: pages.length });
     }
-    event.source.postMessage({ type: 'CACHE_DONE', total: pages.length });
+    e.source?.postMessage({ type: 'CACHE_DONE', total: pages.length });
+    self._cachingActive = false;
   }
 
-  // Check which pages are already cached
-  if (type === 'CHECK_CACHED') {
-    const cache = await caches.open(PAGES_CACHE);
-    const keys  = await cache.keys();
-    const cached = keys.map(k => {
-      const m = new URL(k.url).pathname.match(/page(\d+)\./);
-      return m ? parseInt(m[1]) : 0;
-    }).filter(Boolean);
-    event.source.postMessage({ type: 'CACHED_LIST', pages: cached });
-  }
+  if (type === 'CACHE_PAGES') self._cachingActive = true;
 
-  // Clear pages cache
   if (type === 'CLEAR_PAGES') {
-    await caches.delete(PAGES_CACHE);
-    event.source.postMessage({ type: 'CACHE_CLEARED' });
+    await caches.delete(CACHE_PAGES);
+    e.source?.postMessage({ type: 'CACHE_CLEARED' });
   }
 
-  // Get cache size info
   if (type === 'CACHE_INFO') {
-    const cacheNames = await caches.keys();
     let totalPages = 0;
-    for (const name of cacheNames) {
-      const c = await caches.open(name);
-      const keys = await c.keys();
-      if (name.startsWith('quran-jam-pages')) totalPages += keys.length;
-    }
-    event.source.postMessage({ type: 'CACHE_INFO_RESULT', totalPages, version: VERSION });
+    try {
+      const c = await caches.open(CACHE_PAGES);
+      totalPages = (await c.keys()).length;
+    } catch (_) {}
+    e.source?.postMessage({ type: 'CACHE_INFO', totalPages, ver: VER });
   }
 });

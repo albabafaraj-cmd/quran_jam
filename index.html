@@ -14,24 +14,11 @@ html
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="manifest" href="manifest.json">
-<meta name="application-name" content="مصحف الجماهيرية">
 <link rel="apple-touch-icon" href="images/icon-192.png">
 <link rel="apple-touch-icon" sizes="512x512" href="images/icon-512.png">
 <meta name="apple-mobile-web-app-title" content="مصحف الجماهيرية">
-
-<!-- Google Fonts -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Scheherazade+New:wght@400;700&family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
-
-<style>
-/* ── خط المصحف المحلي ── */
-@font-face {
-  font-family: 'KFGQPCHafs';
-  src: url('fonts/kfgqpc-uthman-taha-hafs.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-</style>
 <style>
 :root{
   --br-dark:#4E342E;--br-main:#5D4037;--br-med:#795548;--br-light:#8D6E63;
@@ -137,16 +124,23 @@ html,body{
 /* sepia on image */
 .sepia-img{filter:sepia(.6) brightness(.95);}
 
-/* page nav overlay arrows */
-#page-nav-prev,#page-nav-next{position:absolute;top:50%;transform:translateY(-50%);
-  width:44px;height:80px;background:rgba(93,64,55,.15);backdrop-filter:blur(4px);
-  border:none;color:rgba(255,255,255,.8);font-size:1.8rem;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;border-radius:10px;
-  transition:opacity var(--tr),background var(--tr);z-index:10;opacity:0;}
-#page-nav-prev{right:0;border-radius:10px 0 0 10px;}
-#page-nav-next{left:0;border-radius:0 10px 10px 0;}
-#page-viewer:hover #page-nav-prev,#page-viewer:hover #page-nav-next{opacity:1;}
-#page-nav-prev:active,#page-nav-next:active{background:rgba(93,64,55,.4);}
+/* page nav — bottom corners, never cover text */
+#page-nav-prev,#page-nav-next{
+  position:absolute;bottom:16px;
+  width:44px;height:44px;
+  background:rgba(62,39,35,.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border:1.5px solid rgba(212,175,55,.35);
+  border-radius:50%;
+  color:rgba(255,255,255,.9);font-size:1.3rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  z-index:10;opacity:.85;transition:opacity var(--tr),background var(--tr),transform var(--tr);}
+#page-nav-prev{right:12px;}
+#page-nav-next{left:12px;}
+#page-nav-prev:active,#page-nav-next:active{background:rgba(93,64,55,.95);transform:scale(.93);}
+@media(hover:hover){
+  #page-nav-prev,#page-nav-next{opacity:.35;}
+  #page-viewer:hover #page-nav-prev,#page-viewer:hover #page-nav-next{opacity:.85;}
+}
 
 /* page indicator */
 #page-indicator{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
@@ -491,62 +485,56 @@ select.small-select{flex:1;padding:9px 12px;border:1px solid var(--border);borde
 .text-note.hidden-note{display:none;}
 
 /* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px;}
+
 /* ── PWA INSTALL BANNER ── */
 #pwa-banner{position:fixed;bottom:0;left:0;right:0;z-index:8000;
-  background:linear-gradient(135deg,#4E342E,#5D4037);color:#fff;
-  padding:14px 16px calc(14px + var(--safe-b));
+  background:linear-gradient(135deg,#4E342E 0%,#5D4037 100%);color:#fff;
+  padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px));
   display:flex;align-items:center;gap:12px;
-  box-shadow:0 -4px 20px rgba(0,0,0,.35);
-  transform:translateY(100%);transition:transform .4s cubic-bezier(.32,.72,0,1);}
+  box-shadow:0 -4px 20px rgba(0,0,0,.4);
+  transform:translateY(110%);transition:transform .4s cubic-bezier(.32,.72,0,1);}
 #pwa-banner.show{transform:translateY(0);}
-#pwa-banner .pwa-icon{width:48px;height:48px;border-radius:14px;flex-shrink:0;object-fit:cover;}
-#pwa-banner .pwa-text{flex:1;}
-#pwa-banner .pwa-title{font-weight:700;font-size:.95rem;}
-#pwa-banner .pwa-sub{font-size:.75rem;color:rgba(255,255,255,.7);margin-top:2px;}
-#pwa-banner .pwa-install-btn{background:var(--gold);color:#3E2723;border:none;
-  padding:9px 18px;border-radius:12px;font-family:inherit;font-size:.9rem;
+#pwa-banner .pwa-icon{width:48px;height:48px;border-radius:14px;flex-shrink:0;object-fit:cover;border:1px solid rgba(255,255,255,.2);}
+#pwa-banner .pwa-text{flex:1;min-width:0;}
+#pwa-banner .pwa-title{font-weight:700;font-size:.92rem;}
+#pwa-banner .pwa-sub{font-size:.72rem;color:rgba(255,255,255,.65);margin-top:2px;}
+#pwa-banner .pwa-btn{background:#D4AF37;color:#3E2723;border:none;
+  padding:9px 16px;border-radius:12px;font-family:inherit;font-size:.88rem;
   font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;}
-#pwa-banner .pwa-close-btn{background:transparent;border:none;color:rgba(255,255,255,.6);
-  font-size:1.3rem;cursor:pointer;padding:4px;flex-shrink:0;}
+#pwa-banner .pwa-x{background:transparent;border:none;color:rgba(255,255,255,.55);
+  font-size:1.2rem;cursor:pointer;padding:6px;flex-shrink:0;line-height:1;}
 
-/* iOS install hint */
+/* ── iOS hint sheet ── */
 #ios-hint{position:fixed;bottom:0;left:0;right:0;z-index:8001;
-  background:#1C1C1E;color:#fff;border-radius:20px 20px 0 0;
-  padding:20px 20px calc(20px + var(--safe-b));
-  transform:translateY(100%);transition:transform .4s cubic-bezier(.32,.72,0,1);
-  box-shadow:0 -4px 30px rgba(0,0,0,.5);}
+  background:#1C1C1E;color:#fff;border-radius:22px 22px 0 0;
+  padding:20px 20px calc(24px + env(safe-area-inset-bottom,0px));
+  transform:translateY(110%);transition:transform .4s cubic-bezier(.32,.72,0,1);
+  box-shadow:0 -4px 40px rgba(0,0,0,.6);}
 #ios-hint.show{transform:translateY(0);}
-#ios-hint h3{font-size:1rem;font-weight:700;margin-bottom:10px;text-align:center;}
-.ios-step{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08);}
-.ios-step:last-child{border-bottom:none;}
-.ios-step-icon{font-size:1.5rem;width:36px;text-align:center;flex-shrink:0;}
-.ios-step-text{font-size:.88rem;color:rgba(255,255,255,.85);}
+#ios-hint h3{font-size:.98rem;font-weight:700;margin-bottom:12px;text-align:center;color:#fff;}
+.ios-step{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.07);}
+.ios-step:last-of-type{border-bottom:none;}
+.ios-step-num{width:28px;height:28px;border-radius:50%;background:#D4AF37;color:#3E2723;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;}
+.ios-step-text{font-size:.85rem;color:rgba(255,255,255,.85);line-height:1.5;}
 .ios-step-text b{color:#FFD60A;}
-#ios-hint .ios-close{display:block;text-align:center;margin-top:14px;
-  color:rgba(255,255,255,.5);font-size:.85rem;cursor:pointer;padding:4px;}
+#ios-hint .ios-close-btn{display:block;text-align:center;margin-top:14px;
+  color:rgba(255,255,255,.45);font-size:.83rem;cursor:pointer;padding:6px;}
 
-/* ── OFFLINE DOWNLOAD MODAL ── */
-#offline-modal .dl-section{display:flex;flex-direction:column;gap:10px;}
-#offline-modal .dl-card{padding:14px;background:var(--cream);border-radius:14px;
-  border:1px solid var(--border);}
-#offline-modal .dl-card h4{font-size:.95rem;font-weight:700;margin-bottom:6px;}
-#offline-modal .dl-card p{font-size:.78rem;color:var(--txt-l);margin-bottom:10px;}
-.dl-progress-wrap{height:8px;background:rgba(93,64,55,.15);border-radius:8px;overflow:hidden;margin-top:8px;}
-.dl-progress-fill{height:100%;background:var(--gold);border-radius:8px;
-  width:0;transition:width .3s;}
-.dl-status-text{font-size:.75rem;color:var(--txt-l);margin-top:4px;}
-.dl-size-info{font-size:.72rem;color:var(--br-light);font-style:italic;}
-
-/* ── AUDIO DOWNLOAD PROGRESS ── */
-#audio-dl-progress{position:fixed;top:0;left:0;right:0;z-index:9000;
-  background:var(--br-dark);color:#fff;padding:10px 16px;
+/* ── Audio DL progress ── */
+#audio-dl-bar-wrap{position:fixed;top:0;left:0;right:0;z-index:9001;
+  background:#3E2723;color:#fff;padding:10px 16px;
   display:flex;align-items:center;gap:10px;
-  transform:translateY(-100%);transition:transform .3s;}
-#audio-dl-progress.show{transform:translateY(0);}
-#audio-dl-bar{flex:1;height:4px;background:rgba(255,255,255,.2);border-radius:4px;overflow:hidden;}
-#audio-dl-fill{height:100%;background:var(--gold);border-radius:4px;width:0;transition:width .2s;}
+  transform:translateY(-110%);transition:transform .3s;}
+#audio-dl-bar-wrap.show{transform:translateY(0);}
+#audio-dl-track{flex:1;height:4px;background:rgba(255,255,255,.2);border-radius:4px;overflow:hidden;}
+#audio-dl-fill{height:100%;background:#D4AF37;border-radius:4px;width:0;transition:width .25s;}
 
-::-webkit-scrollbar{width:4px;}
+/* ── Offline modal extras ── */
+.dl-prog-wrap{height:8px;background:rgba(93,64,55,.15);border-radius:8px;overflow:hidden;margin:8px 0;}
+.dl-prog-fill{height:100%;background:#D4AF37;border-radius:8px;width:0;transition:width .4s;}
+.dl-stat{font-size:.73rem;color:var(--txt-l);margin-top:3px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--br-pale);border-radius:4px;}
 ::-webkit-scrollbar-thumb:hover{background:var(--br-light);}
@@ -607,6 +595,9 @@ select.small-select{flex:1;padding:9px 12px;border:1px solid var(--border);borde
 
 /* ── TWO PAGE LAYOUT ── */
 .two-page-container{display:flex;align-items:stretch;gap:0;height:100%;direction:rtl;}
+</style>
+<style>
+@font-face{font-family:'KFGQPCHafs';src:url('fonts/kfgqpc-uthman-taha-hafs.ttf') format('truetype');font-weight:normal;font-style:normal;font-display:swap;}
 </style>
 </head>
 <body>
@@ -783,86 +774,76 @@ select.small-select{flex:1;padding:9px 12px;border:1px solid var(--border);borde
 
 </div><!-- /app -->
 
-<!-- TOAST -->
-<div id="toast" class="toast"></div>
+<!-- ══ PWA ELEMENTS ══ -->
 
-<!-- PWA Install Banner (Android/Desktop) -->
+<!-- Install banner (Android / Desktop) -->
 <div id="pwa-banner">
-  <img src="images/icon-192.png" class="pwa-icon" alt="">
+  <img src="images/icon-192.png" class="pwa-icon" alt="" onerror="this.style.display='none'">
   <div class="pwa-text">
     <div class="pwa-title">ثبّت مصحف الجماهيرية</div>
-    <div class="pwa-sub">استخدمه كتطبيق كامل • يعمل بدون إنترنت</div>
+    <div class="pwa-sub">يعمل كاملاً بدون إنترنت بعد التثبيت</div>
   </div>
-  <button class="pwa-install-btn" id="pwa-install-btn" onclick="triggerInstall()">تثبيت</button>
-  <button class="pwa-close-btn" onclick="dismissBanner()">✕</button>
+  <button class="pwa-btn" onclick="triggerInstall()">تثبيت</button>
+  <button class="pwa-x" onclick="dismissBanner()">✕</button>
 </div>
 
-<!-- iOS Safari install hint -->
+<!-- iOS Safari hint -->
 <div id="ios-hint">
-  <h3>📲 ثبّت التطبيق على شاشتك</h3>
-  <div class="ios-step">
-    <span class="ios-step-icon">1️⃣</span>
-    <div class="ios-step-text">اضغط على زر <b>المشاركة</b> في الشريط السفلي <b>⎙</b></div>
-  </div>
-  <div class="ios-step">
-    <span class="ios-step-icon">2️⃣</span>
-    <div class="ios-step-text">اختر <b>"Add to Home Screen"</b> أو <b>"إضافة إلى الشاشة الرئيسية"</b></div>
-  </div>
-  <div class="ios-step">
-    <span class="ios-step-icon">3️⃣</span>
-    <div class="ios-step-text">اضغط <b>Add</b> أو <b>إضافة</b> في الزاوية العلوية اليمنى</div>
-  </div>
-  <span class="ios-close" onclick="closeIosHint()">إغلاق</span>
+  <h3>📲 ثبّت التطبيق على شاشتك الرئيسية</h3>
+  <div class="ios-step"><span class="ios-step-num">1</span><div class="ios-step-text">اضغط على أيقونة <b>المشاركة ⎙</b> في أسفل Safari</div></div>
+  <div class="ios-step"><span class="ios-step-num">2</span><div class="ios-step-text">اختر <b>Add to Home Screen</b> أو <b>إضافة إلى الشاشة الرئيسية</b></div></div>
+  <div class="ios-step"><span class="ios-step-num">3</span><div class="ios-step-text">اضغط <b>Add</b> في أعلى اليمين وستظهر أيقونة المصحف</div></div>
+  <span class="ios-close-btn" onclick="closeIosHint()">إغلاق</span>
 </div>
 
-<!-- Audio Download Progress Bar -->
-<div id="audio-dl-progress">
-  <span id="audio-dl-label" style="font-size:.82rem;white-space:nowrap;">جاري التنزيل...</span>
-  <div id="audio-dl-bar"><div id="audio-dl-fill"></div></div>
-  <span id="audio-dl-pct" style="font-size:.78rem;min-width:36px;text-align:left;">0%</span>
+<!-- Audio download progress -->
+<div id="audio-dl-bar-wrap">
+  <span id="audio-dl-lbl" style="font-size:.8rem;white-space:nowrap;flex-shrink:0;">جاري التنزيل...</span>
+  <div id="audio-dl-track"><div id="audio-dl-fill"></div></div>
+  <span id="audio-dl-pct" style="font-size:.76rem;min-width:34px;flex-shrink:0;">0%</span>
 </div>
 
 <!-- Offline Download Modal -->
-<div class="modal-overlay" id="offline-modal-overlay" onclick="closeOfflineModal()">
-  <div class="modal" id="offline-modal" onclick="event.stopPropagation()">
+<div class="modal-overlay" id="offline-overlay" onclick="closeOfflineModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:480px;">
     <div class="modal-header">
-      <span class="modal-title">📥 التنزيل والوضع الأوفلاين</span>
+      <span class="modal-title">📥 التنزيل للاستخدام أوفلاين</span>
       <button class="modal-close" onclick="closeOfflineModal()">✕</button>
     </div>
-    <div class="modal-body" id="offline-modal-body">
-      <div class="dl-section">
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:12px;">
 
-        <!-- App shell -->
-        <div class="dl-card">
-          <h4>🏠 الملفات الأساسية</h4>
-          <p>التطبيق + قاعدة البيانات + الخط — يُنزَّل تلقائياً عند التثبيت</p>
-          <span id="shell-cache-status" class="dl-size-info">جاري التحقق...</span>
-          <button class="btn-primary" style="margin-top:8px;font-size:.85rem;padding:8px 16px;" onclick="cacheShell()">تحديث الملفات الأساسية</button>
+        <div style="padding:14px;background:var(--cream);border-radius:14px;border:1px solid var(--border);">
+          <div style="font-weight:700;margin-bottom:4px;">🏠 الملفات الأساسية</div>
+          <div style="font-size:.76rem;color:var(--txt-l);margin-bottom:8px;">التطبيق + التفسير + الخط — تُخزَّن تلقائياً</div>
+          <div id="shell-status" style="font-size:.72rem;color:var(--br-light);">جاري الفحص...</div>
+          <button class="btn-secondary" style="margin-top:8px;font-size:.82rem;padding:7px 14px;" onclick="refreshShell()">🔄 تحديث الملفات</button>
         </div>
 
-        <!-- Pages -->
-        <div class="dl-card">
-          <h4>📖 صفحات المصحف (603 صفحة)</h4>
-          <p>حجم تقريبي: 150-250 ميغابايت. تُنزَّل تدريجياً في الخلفية.</p>
-          <div id="pages-cached-info" class="dl-size-info">جاري الفحص...</div>
-          <div class="dl-progress-wrap"><div class="dl-progress-fill" id="pages-dl-fill"></div></div>
-          <div class="dl-status-text" id="pages-dl-status"></div>
+        <div style="padding:14px;background:var(--cream);border-radius:14px;border:1px solid var(--border);">
+          <div style="font-weight:700;margin-bottom:4px;">📖 صفحات المصحف (603 صفحة)</div>
+          <div style="font-size:.76rem;color:var(--txt-l);margin-bottom:6px;">~150-250 ميغابايت حسب جودة الصور</div>
+          <div id="pages-info" style="font-size:.72rem;color:var(--br-light);">جاري الفحص...</div>
+          <div class="dl-prog-wrap"><div class="dl-prog-fill" id="pages-fill"></div></div>
+          <div class="dl-stat" id="pages-stat"></div>
           <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-            <button class="btn-primary" style="font-size:.85rem;padding:8px 16px;" id="pages-dl-btn" onclick="startPagesDownload()">⬇️ تنزيل جميع الصفحات</button>
-            <button class="btn-secondary" style="font-size:.85rem;padding:8px 14px;" onclick="cacheCurrentRange()">تنزيل 50 صفحة قريبة</button>
-            <button class="btn-danger" style="font-size:.85rem;padding:8px 14px;" onclick="clearPagesCache()">🗑️ حذف التنزيلات</button>
+            <button class="btn-primary" id="pages-dl-btn" style="font-size:.82rem;padding:8px 14px;" onclick="startPagesDownload()">⬇️ تنزيل الكل</button>
+            <button class="btn-secondary" style="font-size:.82rem;padding:8px 12px;" onclick="downloadNearbyPages()">📍 50 صفحة قريبة</button>
+            <button class="btn-danger" style="font-size:.82rem;padding:8px 12px;" onclick="clearPagesCache()">🗑️ حذف</button>
           </div>
         </div>
 
-        <!-- Info -->
-        <div style="padding:12px;background:rgba(93,64,55,.06);border-radius:12px;font-size:.78rem;color:var(--txt-l);line-height:1.7;">
-          <b>ملاحظة:</b> الصوت لا يُنزَّل هنا بسبب حجمه الكبير. استخدم زر ⬇️ في مشغل الصوت لتنزيل قارئ محدد.
+        <div style="padding:10px 12px;background:rgba(212,175,55,.08);border-radius:12px;border:1px solid rgba(212,175,55,.2);font-size:.74rem;color:var(--txt-l);line-height:1.75;">
+          <b style="color:var(--br-main);">💡 ملاحظة:</b> الصوت اختياري — استخدم زر ⬇️ في مشغّل الصوت لتنزيل تلاوة قارئ محدد. تُحفظ الملفات على جهازك وتعمل أوفلاين.
         </div>
 
       </div>
     </div>
   </div>
 </div>
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
 
 <!-- ═══════════════════════════════════════════════ SHEETS / MODALS ══ -->
 
@@ -1917,16 +1898,29 @@ function getAudioTitle(reciter,id){
   }
 }
 
-function playAudio(page){
+async function playAudio(page){
   if(!state.selectedReciter)return;
   const id=getAudioId(state.selectedReciter,page);
   state.currentAudioId=id;
-  const url=buildAudioUrl(state.selectedReciter,id);
+  const remoteUrl=buildAudioUrl(state.selectedReciter,id);
   const title=getAudioTitle(state.selectedReciter,id);
-  audioEl.src=url;
+
+  // تحقق هل الملف محفوظ محلياً في IndexedDB أولاً
+  let srcToPlay=remoteUrl;
+  try{
+    const localBlob=await getLocalAudio(state.selectedReciter.name,id);
+    if(localBlob){
+      srcToPlay=URL.createObjectURL(localBlob);
+      showToast('▶ تشغيل من الجهاز (أوفلاين)');
+    }
+  }catch(e){}
+
+  audioEl.src=srcToPlay;
   audioEl.playbackRate=state.playbackSpeed;
-  const playPromise=audioEl.play();
-  if(playPromise!==undefined)playPromise.catch(e=>showToast('تعذر تشغيل الصوت. تأكد من اتصالك بالإنترنت.'));
+  audioEl.play().catch(e=>{
+    if(srcToPlay!==remoteUrl) URL.revokeObjectURL(srcToPlay);
+    showToast('تعذّر التشغيل — تأكد من اتصالك بالإنترنت');
+  });
   updateAudioUI(title);
   showAudioBar();
 }
@@ -1985,67 +1979,65 @@ function togglePlaybackMode(mode){
 
 async function downloadCurrentAudio(){
   if(!state.selectedReciter)return;
-  const id   = getAudioId(state.selectedReciter, state.currentPage);
-  const url  = buildAudioUrl(state.selectedReciter, id);
-  const title= getAudioTitle(state.selectedReciter, id);
-  const fname= `${state.selectedReciter.name} - ${title}.mp3`.replace(/[/\\:*?"<>|]/g,'_');
+  const id=getAudioId(state.selectedReciter,state.currentPage);
+  const url=buildAudioUrl(state.selectedReciter,id);
+  const title=getAudioTitle(state.selectedReciter,id);
+  const fname=(state.selectedReciter.name+' - '+title+'.mp3').replace(/[/\\:*?"<>|]/g,'_');
 
-  // Show progress bar
-  const bar  = document.getElementById('audio-dl-progress');
-  const fill = document.getElementById('audio-dl-fill');
-  const lbl  = document.getElementById('audio-dl-label');
-  const pct  = document.getElementById('audio-dl-pct');
-  bar.classList.add('show');
-  lbl.textContent = 'جاري تنزيل: ' + title;
-  fill.style.width = '0%'; pct.textContent = '0%';
+  // تحقق هل محفوظ مسبقاً
+  try{
+    const existing=await getLocalAudio(state.selectedReciter.name,id);
+    if(existing){
+      const burl=URL.createObjectURL(existing);
+      const a=document.createElement('a');
+      a.href=burl;a.download=fname;
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(burl),10000);
+      showToast('تم تصدير الملف المحفوظ ✓');
+      return;
+    }
+  }catch(e){}
+
+  // تنزيل مع شريط تقدم
+  const wrap=document.getElementById('audio-dl-bar-wrap');
+  const fill=document.getElementById('audio-dl-fill');
+  const lbl=document.getElementById('audio-dl-lbl');
+  const pct=document.getElementById('audio-dl-pct');
+  wrap.classList.add('show');
+  lbl.textContent='تنزيل: '+title;
+  fill.style.width='3%';pct.textContent='0%';
 
   try{
-    // Fetch with progress tracking
-    const resp = await fetch(url, {mode:'cors'});
-    if(!resp.ok) throw new Error('HTTP ' + resp.status);
-    const total = parseInt(resp.headers.get('content-length') || '0');
-    const reader = resp.body.getReader();
-    const chunks = [];
-    let received = 0;
-
+    const resp=await fetch(url,{mode:'cors',credentials:'omit'});
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    const total=parseInt(resp.headers.get('content-length')||'0');
+    const reader=resp.body.getReader();
+    const chunks=[];let received=0;
     while(true){
-      const {done, value} = await reader.read();
-      if(done) break;
-      chunks.push(value);
-      received += value.length;
-      if(total > 0){
-        const p = Math.round((received/total)*100);
-        fill.style.width = p + '%';
-        pct.textContent  = p + '%';
-      } else {
-        // Unknown length — pulse animation
-        fill.style.width = '60%';
-        lbl.textContent  = 'جاري التنزيل... ' + Math.round(received/1024) + ' KB';
-      }
+      const {done,value}=await reader.read();
+      if(done)break;
+      chunks.push(value);received+=value.length;
+      const p=total>0?Math.round((received/total)*100):Math.min(90,Math.round(received/50000));
+      fill.style.width=p+'%';pct.textContent=p+'%';
+      lbl.textContent='تنزيل: '+Math.round(received/1024)+' KB';
     }
-
-    // Create blob and trigger download
-    const blob  = new Blob(chunks, {type:'audio/mpeg'});
-    const bUrl  = URL.createObjectURL(blob);
-    const a     = document.createElement('a');
-    a.href      = bUrl;
-    a.download  = fname;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(()=> URL.revokeObjectURL(bUrl), 10000);
-    showToast('تم تنزيل الملف ✓');
-
-  } catch(err){
-    console.error('Audio DL error:', err);
-    // CORS blocked → fallback to new tab
-    showToast('يفتح التنزيل في نافذة جديدة...');
-    window.open(url, '_blank', 'noopener');
-  } finally {
-    setTimeout(()=>{
-      bar.classList.remove('show');
-      fill.style.width='0%';
-    }, 1500);
+    const blob=new Blob(chunks,{type:'audio/mpeg'});
+    // حفظ محلياً للاستخدام أوفلاين
+    try{await saveLocalAudio(state.selectedReciter.name,id,blob);}catch(e){}
+    // تنزيل للمستخدم
+    const burl=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=burl;a.download=fname;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(burl),15000);
+    fill.style.width='100%';
+    showToast('تم الحفظ على الجهاز ✓ '+fname);
+  }catch(err){
+    console.warn('Audio DL:',err);
+    showToast('يُفتح التنزيل في نافذة جديدة...');
+    window.open(url,'_blank','noopener,noreferrer');
+  }finally{
+    setTimeout(()=>{wrap.classList.remove('show');fill.style.width='0%';},2200);
   }
 }
 
@@ -2749,61 +2741,85 @@ document.addEventListener('keydown',e=>{
 // DATABASE LOADER
 // ══════════════════════════════════════════════════════════
 async function loadDatabase(){
+  // ── مستخرج نصي آمن: يدعم {ar,en} object أو string عادي ──
+  function g(v, lang){
+    if(!v) return '';
+    if(typeof v === 'string') return v;
+    if(typeof v === 'object'){
+      if(lang==='ar') return v.ar||v.arabic||Object.values(v)[0]||'';
+      if(lang==='en') return v.en||v.english||Object.values(v)[1]||Object.values(v)[0]||'';
+      return Object.values(v).find(x=>typeof x==='string')||'';
+    }
+    return '';
+  }
+
+  // محاولة تحميل من مسارات متعددة
+  let raw=null;
+  const paths=['./database.json','database.json','../database.json'];
+  for(const p of paths){
+    try{
+      const r=await fetch(p,{cache:'force-cache'});
+      if(r.ok){raw=await r.json();console.log('✅ DB:',p);break;}
+    }catch(e){console.warn('DB fetch fail:',p,e.message);}
+  }
+  if(!raw){
+    // آخر محاولة بدون cache
+    try{
+      const r=await fetch('./database.json',{cache:'no-store'});
+      if(r.ok) raw=await r.json();
+    }catch(e){}
+  }
+  if(!raw){
+    showToast('⚠️ لم يُعثر على database.json — تأكد من رفعه بجانب index.html');
+    return;
+  }
+
+  const verses=[];
   try{
-    const resp=await fetch('database.json');
-    if(!resp.ok)throw new Error('HTTP '+resp.status);
-    const raw=await resp.json();
-    // Support both array-of-surahs and flat-verses formats
-    const verses=[];
     if(Array.isArray(raw)){
+      // النمط الحقيقي: [{number, name:{ar,en}, verses:[{number,text:{ar,en},page,tafsir}]}]
       raw.forEach(surah=>{
-        const surahName=surah.name||surah.transliteration||'';
         const surahNumber=surah.number||surah.id||0;
+        const surahName=g(surah.name,'ar')||surah.transliteration||'';
         const surahPage=SURAHS.find(s=>s.id===surahNumber)?.page||1;
         const ayahs=surah.verses||surah.ayahs||surah.ayat||[];
         ayahs.forEach(ay=>{
-          const page=ay.page||estimatePageForVerse(surahNumber,ay.number||ay.id||0,surahPage);
+          const vNum=ay.number||ay.id||ay.verse_number||0;
+          const page=ay.page||estimatePageForVerse(surahNumber,vNum,surahPage);
           verses.push({
-            surahNumber,surahName,
-            number:ay.number||ay.id||ay.verse_number||0,
+            surahNumber,surahName,number:vNum,page,
             text:{
-              ar:ay.text||ay.ar||ay.arabic||ay.content||'',
-              en:ay.translation||ay.en||ay.english||(ay.translations&&ay.translations.en)||''
+              ar:g(ay.text,'ar')||g(ay.ar,'ar')||'',
+              en:g(ay.text,'en')||g(ay.translation,'en')||g(ay.en,'en')||''
             },
             transliteration:ay.transliteration||'',
-            tafsir:ay.tafsir||ay.tafseer||(ay.tafaseer&&ay.tafaseer[0]&&ay.tafaseer[0].text)||'',
-            page,
+            tafsir:ay.tafsir||ay.tafseer||(Array.isArray(ay.tafaseer)?ay.tafaseer[0]?.text||'':'')||'',
             normalizedText:''
           });
         });
       });
-    }else if(raw.verses||raw.data){
-      // flat structure {verses:[...]} or {data:[...]}
+    }else{
       const arr=raw.verses||raw.data||[];
       arr.forEach(ay=>{
-        const sNum=ay.surah_number||ay.chapter_id||ay.surahNumber||1;
-        const sName=(SURAHS.find(s=>s.id===sNum)||{}).name||'';
+        const sNum=ay.surah_number||ay.chapter_id||1;
+        const sName=g(SURAHS.find(s=>s.id===sNum)?.name,'ar')||'';
         const sPage=SURAHS.find(s=>s.id===sNum)?.page||1;
-        const vNum=ay.verse_number||ay.number||ay.id||0;
+        const vNum=ay.verse_number||ay.number||0;
         const page=ay.page||estimatePageForVerse(sNum,vNum,sPage);
         verses.push({
-          surahNumber:sNum,surahName:sName,number:vNum,
-          text:{ar:ay.text||ay.ar||ay.arabic||'',en:ay.translation||ay.en||''},
-          transliteration:ay.transliteration||'',
-          tafsir:ay.tafsir||ay.tafseer||'',
-          page,normalizedText:''
+          surahNumber:sNum,surahName:sName,number:vNum,page,
+          text:{ar:g(ay.text,'ar'),en:g(ay.translation,'en')||g(ay.text,'en')},
+          transliteration:ay.transliteration||'',tafsir:ay.tafsir||'',normalizedText:''
         });
       });
     }
-    // Normalize Arabic text for fast searching
-    verses.forEach(v=>{v.normalizedText=normalizeArabic(v.text.ar);});
-    state.allVerses=verses;
-    console.log(`✅ قاعدة البيانات محملة: ${verses.length} آية`);
-    showToast(`تم تحميل ${verses.length} آية ✓`);
-  }catch(err){
-    console.warn('⚠️ تعذر تحميل قاعدة البيانات:',err);
-    showToast('تعذر تحميل بيانات التفسير — تأكد أن database.json موجود');
-  }
+  }catch(e){console.error('DB parse:',e);showToast('خطأ في قراءة البيانات');return;}
+
+  if(!verses.length){showToast('⚠️ قاعدة البيانات لا تحتوي على آيات');return;}
+  verses.forEach(v=>{v.normalizedText=normalizeArabic(v.text.ar);});
+  state.allVerses=verses;
+  console.log('✅ DB loaded:',verses.length,'verses');
+  showToast('تم تحميل '+verses.length+' آية ✓');
 }
 
 function estimatePageForVerse(surahNum,verseNum,surahStartPage){
@@ -2910,11 +2926,8 @@ async function init(){
   populateSearchSurahSelect();
 
   // Register Service Worker + PWA
-  registerServiceWorker();
-  checkIosInstallHint();
-
-  // Handle iOS "Add to Home Screen" PWA prompt
-  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();});
+  registerSW();
+  checkIosHint();
 }
 
 // Prevent pull-to-refresh on iOS inside the viewer
@@ -2929,244 +2942,199 @@ window.addEventListener('load',()=>{
   if(document.getElementById('app').classList.contains('hidden')){init();}
 });
 
-// ══════════════════════════════════════════════════════════
-// SERVICE WORKER REGISTRATION
-// ══════════════════════════════════════════════════════════
-let swRegistration = null;
-let deferredInstallPrompt = null; // Android/Desktop install prompt
-
-async function registerServiceWorker(){
-  if(!('serviceWorker' in navigator)) return;
-  try{
-    swRegistration = await navigator.serviceWorker.register('./sw.js', {scope:'./'});
-    console.log('✅ SW registered:', swRegistration.scope);
-    swRegistration.addEventListener('updatefound', ()=>{
-      const newSW = swRegistration.installing;
-      newSW.addEventListener('statechange', ()=>{
-        if(newSW.state==='installed' && navigator.serviceWorker.controller){
-          showToast('تحديث جديد متاح — أعد تحميل الصفحة');
-        }
-      });
-    });
-  } catch(e){ console.warn('SW registration failed:', e); }
-}
 
 // ══════════════════════════════════════════════════════════
-// PWA INSTALL PROMPT (Android / Desktop Chrome)
+// INDEXEDDB — تخزين الصوت محلياً
 // ══════════════════════════════════════════════════════════
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredInstallPrompt = e;
-  // Show banner after 3s if user hasn't dismissed it
-  if(!LS.get('pwa_banner_dismissed')){
-    setTimeout(showInstallBanner, 3000);
-  }
-});
-
-window.addEventListener('appinstalled', ()=>{
-  deferredInstallPrompt = null;
-  dismissBanner();
-  showToast('تم تثبيت مصحف الجماهيرية ✓');
-  LS.set('pwa_installed', true);
-});
-
-function showInstallBanner(){
-  const banner = document.getElementById('pwa-banner');
-  if(banner && deferredInstallPrompt) banner.classList.add('show');
+function openAudioDB(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open('quran-audio',1);
+    req.onupgradeneeded=e=>e.target.result.createObjectStore('audio');
+    req.onsuccess=e=>res(e.target.result);
+    req.onerror=e=>rej(e.target.error);
+  });
 }
-
-function dismissBanner(){
-  document.getElementById('pwa-banner')?.classList.remove('show');
-  LS.set('pwa_banner_dismissed', true);
+async function saveLocalAudio(reciter,id,blob){
+  const db=await openAudioDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction('audio','readwrite');
+    tx.objectStore('audio').put(blob,reciter+'_'+id);
+    tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);
+  });
 }
-
-async function triggerInstall(){
-  if(!deferredInstallPrompt) return;
-  dismissBanner();
-  deferredInstallPrompt.prompt();
-  const { outcome } = await deferredInstallPrompt.userChoice;
-  console.log('Install outcome:', outcome);
-  deferredInstallPrompt = null;
-}
-
-// iOS Safari detection
-function isIosSafari(){
-  const ua = navigator.userAgent;
-  return /iP(hone|ad|od)/.test(ua) && /WebKit/.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/.test(ua);
-}
-
-function isInStandaloneMode(){
-  return window.matchMedia('(display-mode: standalone)').matches ||
-         window.navigator.standalone === true;
-}
-
-function showInstallUI(){
-  closeMore();
-  if(isInStandaloneMode()){
-    showToast('التطبيق مثبّت بالفعل ✓');
-    return;
-  }
-  if(isIosSafari()){
-    document.getElementById('ios-hint')?.classList.add('show');
-    return;
-  }
-  if(deferredInstallPrompt){
-    triggerInstall();
-    return;
-  }
-  showToast('اضغط على قائمة المتصفح واختر "تثبيت التطبيق" أو "Add to Home Screen"');
-}
-
-function closeIosHint(){
-  document.getElementById('ios-hint')?.classList.remove('show');
-}
-
-// Show iOS hint once for new iOS users (not standalone)
-function checkIosInstallHint(){
-  if(isIosSafari() && !isInStandaloneMode() && !LS.get('ios_hint_shown')){
-    LS.set('ios_hint_shown', true);
-    setTimeout(()=> document.getElementById('ios-hint')?.classList.add('show'), 4000);
-  }
-}
-
-// ══════════════════════════════════════════════════════════
-// OFFLINE PAGES DOWNLOAD
-// ══════════════════════════════════════════════════════════
-let pagesDownloading = false;
-
-function openOfflineModal(){
-  closeMore();
-  document.getElementById('offline-modal-overlay').classList.add('show');
-  checkOfflineCacheStatus();
-}
-function closeOfflineModal(){
-  document.getElementById('offline-modal-overlay').classList.remove('show');
-}
-
-function sendSW(msg){
-  return new Promise((resolve)=>{
-    if(!navigator.serviceWorker?.controller){ resolve(null); return; }
-    const ch = new MessageChannel();
-    ch.port1.onmessage = e => resolve(e.data);
-    navigator.serviceWorker.controller.postMessage(msg, [ch.port2]);
+async function getLocalAudio(reciter,id){
+  const db=await openAudioDB();
+  return new Promise((res,rej)=>{
+    const req=db.transaction('audio','readonly').objectStore('audio').get(reciter+'_'+id);
+    req.onsuccess=e=>res(e.target.result||null);
+    req.onerror=e=>rej(e.target.error);
   });
 }
 
-async function checkOfflineCacheStatus(){
-  const shellEl   = document.getElementById('shell-cache-status');
-  const pagesEl   = document.getElementById('pages-cached-info');
-  shellEl.textContent = 'التطبيق محفوظ في الذاكرة ✓';
+// ══════════════════════════════════════════════════════════
+// SERVICE WORKER
+// ══════════════════════════════════════════════════════════
+let swReg=null;
+let deferredPrompt=null;
 
-  if(!navigator.serviceWorker?.controller){
-    pagesEl.textContent = 'جاري تحميل مدير التخزين...';
-    return;
+async function registerSW(){
+  if(!('serviceWorker' in navigator))return;
+  try{
+    swReg=await navigator.serviceWorker.register('./sw.js',{scope:'./'});
+    console.log('✅ SW registered');
+    navigator.serviceWorker.addEventListener('message',e=>{
+      const {type,done,total}=e.data||{};
+      if(type==='CACHE_PROGRESS'){
+        const p=total?Math.round((done/total)*100):0;
+        const f=document.getElementById('pages-fill');
+        const s=document.getElementById('pages-stat');
+        if(f)f.style.width=p+'%';
+        if(s)s.textContent='تنزيل: '+done+' / '+total+' ('+p+'%)';
+      }
+      if(type==='CACHE_DONE'){
+        showToast('تم تنزيل الصفحات ✓');
+        refreshOfflineInfo();
+        pDling=false;
+        const b=document.getElementById('pages-dl-btn');
+        if(b){b.textContent='⬇️ تنزيل الكل';b.onclick=startPagesDownload;}
+      }
+    });
+  }catch(e){console.warn('SW fail:',e);}
+}
+
+// ── Install prompt (Android / Desktop Chrome) ──
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  deferredPrompt=e;
+  if(!LS.get('pwa_dismissed'))setTimeout(()=>{
+    document.getElementById('pwa-banner')?.classList.add('show');
+  },3500);
+});
+window.addEventListener('appinstalled',()=>{
+  deferredPrompt=null;
+  dismissBanner();
+  showToast('✅ تم تثبيت مصحف الجماهيرية');
+  LS.set('pwa_installed',true);
+});
+
+function dismissBanner(){
+  document.getElementById('pwa-banner')?.classList.remove('show');
+  LS.set('pwa_dismissed',true);
+}
+async function triggerInstall(){
+  if(!deferredPrompt)return;
+  dismissBanner();
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt=null;
+}
+
+// ── iOS detection ──
+const isIOS=()=>/iP(hone|ad|od)/.test(navigator.userAgent)&&/WebKit/.test(navigator.userAgent)&&!/CriOS|FxiOS/.test(navigator.userAgent);
+const isStandalone=()=>window.matchMedia('(display-mode:standalone)').matches||navigator.standalone===true;
+
+function showInstallUI(){
+  closeMore();
+  if(isStandalone()){showToast('التطبيق مثبّت بالفعل ✓');return;}
+  if(isIOS()){document.getElementById('ios-hint')?.classList.add('show');return;}
+  if(deferredPrompt){triggerInstall();return;}
+  showToast('في متصفحك: القائمة ← تثبيت التطبيق / Add to Home Screen');
+}
+function closeIosHint(){document.getElementById('ios-hint')?.classList.remove('show');}
+function checkIosHint(){
+  if(isIOS()&&!isStandalone()&&!LS.get('ios_shown')){
+    LS.set('ios_shown',true);
+    setTimeout(()=>document.getElementById('ios-hint')?.classList.add('show'),5000);
   }
-  const info = await sendSW({ type: 'CACHE_INFO' });
+}
+
+// ══════════════════════════════════════════════════════════
+// OFFLINE / PAGES CACHE
+// ══════════════════════════════════════════════════════════
+let pDling=false;
+
+function openOfflineModal(){
+  closeMore();
+  document.getElementById('offline-overlay')?.classList.add('show');
+  refreshOfflineInfo();
+}
+function closeOfflineModal(){document.getElementById('offline-overlay')?.classList.remove('show');}
+
+function msgSW(msg){
+  return new Promise(res=>{
+    const ctrl=navigator.serviceWorker?.controller;
+    if(!ctrl){res(null);return;}
+    const ch=new MessageChannel();
+    ch.port1.onmessage=e=>res(e.data);
+    ctrl.postMessage(msg,[ch.port2]);
+  });
+}
+
+async function refreshOfflineInfo(){
+  const shell=document.getElementById('shell-status');
+  const pages=document.getElementById('pages-info');
+  const fill=document.getElementById('pages-fill');
+  if(shell)shell.textContent='الملفات الأساسية محفوظة ✓';
+  if(!navigator.serviceWorker?.controller){if(pages)pages.textContent='يرجى الانتظار...';return;}
+  const info=await msgSW({type:'CACHE_INFO'});
   if(info){
-    const cached = info.totalPages || 0;
-    pagesEl.textContent = `محفوظ: ${cached} صفحة من 603`;
-    const fill = document.getElementById('pages-dl-fill');
-    if(fill) fill.style.width = Math.round((cached/603)*100) + '%';
-    const status = document.getElementById('pages-dl-status');
-    if(status) status.textContent = cached>0 ? `${Math.round((cached/603)*100)}% مكتملة` : '';
+    const n=info.totalPages||0;
+    if(pages)pages.textContent='محفوظ: '+n+' صفحة من 603';
+    if(fill)fill.style.width=Math.round((n/603)*100)+'%';
+    const st=document.getElementById('pages-stat');
+    if(st&&n>0)st.textContent=Math.round((n/603)*100)+'% مكتملة';
   }
 }
 
 async function startPagesDownload(){
-  if(pagesDownloading){ showToast('التنزيل قيد التشغيل بالفعل'); return; }
-  if(!navigator.serviceWorker?.controller){
-    showToast('يرجى الانتظار قليلاً ثم المحاولة مجدداً');
-    return;
-  }
-  pagesDownloading = true;
-  const btn = document.getElementById('pages-dl-btn');
-  if(btn) btn.textContent = '⏸ إيقاف مؤقت';
-  if(btn) btn.onclick = stopPagesDownload;
-
-  const all = Array.from({length:603}, (_,i)=>i+1);
-  let done=0;
-
-  const ch = new MessageChannel();
-  ch.port1.onmessage = e => {
+  if(pDling){showToast('التنزيل قيد التشغيل');return;}
+  if(!navigator.serviceWorker?.controller){showToast('Service Worker لم يُحمَّل بعد');return;}
+  pDling=true;
+  const btn=document.getElementById('pages-dl-btn');
+  if(btn){btn.textContent='⏸ جاري...';btn.onclick=()=>{pDling=false;showToast('توقف مؤقت');};}
+  const pages=Array.from({length:603},(_,i)=>i+1);
+  const ch=new MessageChannel();
+  ch.port1.onmessage=e=>{
     if(e.data.type==='CACHE_PROGRESS'){
-      done = e.data.done;
-      const total = e.data.total;
-      const p = Math.round((done/total)*100);
-      const fill = document.getElementById('pages-dl-fill');
-      const status = document.getElementById('pages-dl-status');
-      if(fill)   fill.style.width = p + '%';
-      if(status) status.textContent = `تنزيل: ${done} / ${total} صفحة (${p}%)`;
+      const p=Math.round((e.data.done/e.data.total)*100);
+      const f=document.getElementById('pages-fill');
+      const s=document.getElementById('pages-stat');
+      if(f)f.style.width=p+'%';
+      if(s)s.textContent='تنزيل: '+e.data.done+' / '+e.data.total+' ('+p+'%)';
     }
     if(e.data.type==='CACHE_DONE'){
-      pagesDownloading = false;
-      if(btn){ btn.textContent = '⬇️ تنزيل جميع الصفحات'; btn.onclick = startPagesDownload; }
+      pDling=false;
+      const b=document.getElementById('pages-dl-btn');
+      if(b){b.textContent='⬇️ تنزيل الكل';b.onclick=startPagesDownload;}
       showToast('تم تنزيل جميع الصفحات ✓');
-      checkOfflineCacheStatus();
+      refreshOfflineInfo();
     }
   };
-
-  navigator.serviceWorker.controller.postMessage(
-    { type:'CACHE_PAGES', data:{ pages: all } },
-    [ch.port2]
-  );
+  navigator.serviceWorker.controller.postMessage({type:'CACHE_PAGES',data:{pages}},[ch.port2]);
 }
 
-function stopPagesDownload(){
-  pagesDownloading = false;
-  showToast('تم إيقاف التنزيل');
-  const btn = document.getElementById('pages-dl-btn');
-  if(btn){ btn.textContent = '⬇️ متابعة التنزيل'; btn.onclick = startPagesDownload; }
-}
-
-async function cacheCurrentRange(){
-  if(!navigator.serviceWorker?.controller){ showToast('يرجى الانتظار...'); return; }
-  const cur = state.currentPage;
-  const start = Math.max(1, cur - 10);
-  const end   = Math.min(603, cur + 40);
-  const pages = Array.from({length: end-start+1}, (_,i)=>start+i);
-
-  const ch = new MessageChannel();
-  ch.port1.onmessage = e => {
-    if(e.data.type==='CACHE_DONE'){
-      showToast(`تم تنزيل ${pages.length} صفحة قريبة ✓`);
-      checkOfflineCacheStatus();
-    }
-  };
-  navigator.serviceWorker.controller.postMessage(
-    { type:'CACHE_PAGES', data:{ pages } }, [ch.port2]
-  );
-  showToast('جاري تنزيل الصفحات القريبة...');
+async function downloadNearbyPages(){
+  if(!navigator.serviceWorker?.controller){showToast('يرجى الانتظار...');return;}
+  const start=Math.max(1,state.currentPage-5);
+  const end=Math.min(603,state.currentPage+45);
+  const pages=Array.from({length:end-start+1},(_,i)=>start+i);
+  const ch=new MessageChannel();
+  ch.port1.onmessage=e=>{if(e.data.type==='CACHE_DONE'){showToast('تم تنزيل '+pages.length+' صفحة ✓');refreshOfflineInfo();}};
+  navigator.serviceWorker.controller.postMessage({type:'CACHE_PAGES',data:{pages}},[ch.port2]);
+  showToast('جاري تنزيل '+pages.length+' صفحة...');
 }
 
 async function clearPagesCache(){
-  if(!confirm('حذف جميع الصفحات المنزّلة؟')) return;
-  if(!navigator.serviceWorker?.controller){ showToast('لا يوجد شيء للحذف'); return; }
-  const ch = new MessageChannel();
-  ch.port1.onmessage = ()=>{
-    showToast('تم حذف الصفحات المنزّلة ✓');
-    checkOfflineCacheStatus();
-  };
-  navigator.serviceWorker.controller.postMessage({ type:'CLEAR_PAGES' }, [ch.port2]);
+  if(!confirm('حذف جميع الصفحات المحفوظة؟'))return;
+  const ch=new MessageChannel();
+  ch.port1.onmessage=()=>{showToast('تم الحذف ✓');refreshOfflineInfo();};
+  navigator.serviceWorker?.controller?.postMessage({type:'CLEAR_PAGES'},[ch.port2]);
 }
 
-async function cacheShell(){
-  if(!swRegistration){ showToast('Service Worker غير مفعّل'); return; }
-  showToast('جاري تحديث الملفات الأساسية...');
-  await swRegistration.update();
-  showToast('تم تحديث الملفات الأساسية ✓');
-}
-
-// Listen for SW messages globally
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.addEventListener('message', e => {
-    const { type, done, total } = e.data || {};
-    if(type==='CACHE_PROGRESS'){
-      const fill   = document.getElementById('pages-dl-fill');
-      const status = document.getElementById('pages-dl-status');
-      if(fill)   fill.style.width = Math.round((done/total)*100)+'%';
-      if(status) status.textContent = `تنزيل: ${done} / ${total}`;
-    }
-  });
+async function refreshShell(){
+  showToast('جاري التحديث...');
+  try{await swReg?.update();showToast('تم التحديث ✓');}
+  catch(e){showToast('تعذّر التحديث: '+e.message);}
 }
 </script>
 </body>
