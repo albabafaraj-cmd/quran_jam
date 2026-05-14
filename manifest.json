@@ -1,7 +1,7 @@
 {
   "name": "مصحف الجماهيرية",
   "short_name": "المصحف",
-  "description": "مصحف الجماهيرية برواية قالون عن نافع",
+  "description": "مصحف الجماهيرية برواية قالون عن نافع — تفسير وتلاوة وبحث في القرآن الكريم",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -28,5 +28,5 @@
     { "name": "الفاتحة", "url": "./index.html?p=1" },
     { "name": "البحث",   "url": "./index.html?s=1" }
   ],
-  "categories": ["education", "lifestyle"]
+  "categories": ["education","lifestyle"]
 }

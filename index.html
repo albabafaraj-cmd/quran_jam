@@ -19,8 +19,6 @@ html
 <meta name="apple-mobile-web-app-title" content="مصحف الجماهيرية">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Scheherazade+New:wght@400;700&family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
-<link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
-<link rel="icon" type="image/png" sizes="512x512" href="images/icon-512.png">
 <style>
 :root{
   --br-dark:#4E342E;--br-main:#5D4037;--br-med:#795548;--br-light:#8D6E63;
@@ -601,6 +599,22 @@ select.small-select{flex:1;padding:9px 12px;border:1px solid var(--border);borde
 <style>
 @font-face{font-family:'KFGQPCHafs';src:url('font/kfgqpc-uthman-taha-hafs.ttf'),url('fonts/kfgqpc-uthman-taha-hafs.ttf') format('truetype');font-weight:normal;font-style:normal;font-display:swap;}
 </style>
+<script>
+// تسجيل فوري للـ Service Worker — قبل أي شيء آخر
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    var swUrl = new URL('./sw.js', location.href).href;
+    navigator.serviceWorker.register(swUrl, { scope: './' })
+      .then(function(reg) {
+        console.log('[SW] Registered. Scope:', reg.scope);
+        // Notify app that SW is ready
+        window._swReg = reg;
+        document.dispatchEvent(new Event('sw-ready'));
+      })
+      .catch(function(err) { console.error('[SW] Failed:', err); });
+  });
+}
+</script>
 </head>
 <body>
 
@@ -2416,6 +2430,7 @@ function openMoreMenu(){
     {icon:'🔢',label:'انتقل إلى صفحة',action:'closeMore();openGoToPageDialog()'},
     {icon:'📥',label:'تنزيل للاستخدام أوفلاين',action:'openOfflineModal()'},
     {icon:'📲',label:'تثبيت التطبيق',action:'showInstallUI()'},
+    {icon:'🔧',label:'تشخيص PWA',action:'showPWADebug()'},
   ];
   document.getElementById('more-menu-items').innerHTML=menuItems.map(i=>`
     <div class="drawer-item" onclick="${i.action};closeMore()">
@@ -2932,9 +2947,11 @@ async function init(){
   // Populate search surah selector
   populateSearchSurahSelect();
 
-  // Register Service Worker + PWA
-  registerSW();
+  // PWA install hints (SW already registered in <head>)
   checkIosHint();
+  // Sync SW registration reference
+  if(window._swReg){ swReg = window._swReg; setTimeout(refreshOfflineInfo,1200); }
+  else { document.addEventListener('sw-ready', ()=>{ swReg=window._swReg; setTimeout(refreshOfflineInfo,800); }); }
 }
 
 // Prevent pull-to-refresh on iOS inside the viewer
@@ -2985,13 +3002,15 @@ let swReg=null;
 let deferredPrompt=null;
 
 async function registerSW(){
+  // Already registered via <head> inline script
+  if(window._swReg){ swReg = window._swReg; return; }
   if(!('serviceWorker' in navigator)){
     console.warn('SW: not supported');return;
   }
   try{
-    // Use the exact path — critical for GitHub Pages subfolder repos
     const swUrl = new URL('./sw.js', location.href).href;
     swReg = await navigator.serviceWorker.register(swUrl, {scope: './'});
+    window._swReg = swReg;
     console.log('✅ SW registered scope:', swReg.scope);
 
     // Listen for messages
@@ -3181,6 +3200,73 @@ async function refreshShell(){
   showToast('جاري التحديث...');
   try{await swReg?.update();showToast('تم التحديث ✓');}
   catch(e){showToast('تعذّر التحديث: '+e.message);}
+}
+
+// ══════════════════════════════════════════════════════════
+// PWA DIAGNOSTIC — يشخّص مشاكل التثبيت
+// ══════════════════════════════════════════════════════════
+async function showPWADebug(){
+  closeMore();
+  const lines = [];
+  lines.push('🔍 تشخيص PWA');
+  lines.push('──────────────────');
+  
+  // HTTPS
+  lines.push((location.protocol==='https:' ? '✅' : '❌') + ' HTTPS: ' + location.protocol);
+  
+  // SW
+  const swSupport = 'serviceWorker' in navigator;
+  lines.push((swSupport ? '✅' : '❌') + ' Service Worker مدعوم');
+  if(swSupport){
+    const regs = await navigator.serviceWorker.getRegistrations();
+    lines.push((regs.length>0?'✅':'❌') + ' SW مسجّل: ' + regs.length + ' تسجيل');
+    if(regs.length>0) lines.push('   النطاق: ' + regs[0].scope);
+  }
+  
+  // Manifest
+  const mLink = document.querySelector('link[rel="manifest"]');
+  lines.push((mLink ? '✅' : '❌') + ' رابط manifest: ' + (mLink?.href||'غير موجود'));
+  if(mLink){
+    try{
+      const r = await fetch(mLink.href);
+      const m = await r.json();
+      lines.push('✅ manifest محمّل — icons: ' + (m.icons?.length||0));
+      // Check icons
+      for(const ic of (m.icons||[])){
+        const ir = await fetch(new URL(ic.src, mLink.href));
+        lines.push((ir.ok?'✅':'❌') + ' أيقونة ' + ic.sizes + ': ' + (ir.ok?'موجودة':'مفقودة!'));
+      }
+    }catch(e){ lines.push('❌ خطأ في تحميل manifest: '+e.message); }
+  }
+  
+  // Install prompt
+  lines.push((deferredPrompt ? '✅' : '⏳') + ' beforeinstallprompt: ' + (deferredPrompt?'جاهز':'لم يُطلَق بعد'));
+  lines.push((isStandalone()?'📱':'🌐') + ' وضع التشغيل: ' + (isStandalone()?'Standalone (مثبّت)':'Browser'));
+  lines.push((isIOS()?'🍎':'🤖') + ' النظام: ' + (isIOS()?'iOS':'Android/Desktop'));
+  
+  // Summary
+  lines.push('──────────────────');
+  if(!deferredPrompt && !isIOS() && !isStandalone())
+    lines.push('⚠️  Chrome لم يُطلق حدث التثبيت بعد.');
+  lines.push('انسخ هذا التقرير وأرسله لمطوّر الموقع.');
+  
+  const msg = lines.join('\n');
+  console.log(msg);
+  
+  // Show in a modal
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#1a1a1a;color:#eee;border-radius:16px;padding:20px;max-width:480px;width:100%;font-family:monospace;font-size:.8rem;line-height:1.7;white-space:pre-wrap;overflow:auto;max-height:80vh;';
+  box.textContent = msg;
+  const btn = document.createElement('button');
+  btn.textContent = 'نسخ وإغلاق';
+  btn.style.cssText = 'display:block;width:100%;margin-top:12px;padding:10px;background:#D4AF37;color:#3E2723;border:none;border-radius:10px;font-size:.9rem;font-weight:700;cursor:pointer;';
+  btn.onclick = ()=>{ copyToClipboard(msg); document.body.removeChild(overlay); };
+  box.appendChild(btn);
+  overlay.appendChild(box);
+  overlay.onclick = (e)=>{ if(e.target===overlay) document.body.removeChild(overlay); };
+  document.body.appendChild(overlay);
 }
 </script>
 </body>
