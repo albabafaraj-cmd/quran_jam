@@ -1,32 +1,24 @@
 {
   "name": "مصحف الجماهيرية",
   "short_name": "المصحف",
-  "description": "مصحف الجماهيرية برواية قالون عن نافع — تفسير وتلاوة وبحث في القرآن الكريم",
-  "start_url": "./index.html",
-  "scope": "./",
+  "description": "مصحف الجماهيرية برواية قالون عن نافع",
+  "start_url": "index.html",
   "display": "standalone",
-  "orientation": "any",
   "background_color": "#4E342E",
   "theme_color": "#5D4037",
+  "orientation": "portrait",
   "lang": "ar",
   "dir": "rtl",
   "icons": [
     {
       "src": "images/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "images/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     }
-  ],
-  "shortcuts": [
-    { "name": "الفاتحة", "url": "./index.html?p=1" },
-    { "name": "البحث",   "url": "./index.html?s=1" }
-  ],
-  "categories": ["education","lifestyle"]
+  ]
 }

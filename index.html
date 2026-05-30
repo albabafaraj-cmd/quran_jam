@@ -600,18 +600,16 @@ select.small-select{flex:1;padding:9px 12px;border:1px solid var(--border);borde
 @font-face{font-family:'KFGQPCHafs';src:url('font/kfgqpc-uthman-taha-hafs.ttf'),url('fonts/kfgqpc-uthman-taha-hafs.ttf') format('truetype');font-weight:normal;font-style:normal;font-display:swap;}
 </style>
 <script>
-// تسجيل فوري للـ Service Worker — قبل أي شيء آخر
+// تسجيل Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
-    var swUrl = new URL('./sw.js', location.href).href;
-    navigator.serviceWorker.register(swUrl, { scope: './' })
+    navigator.serviceWorker.register('sw.js')
       .then(function(reg) {
-        console.log('[SW] Registered. Scope:', reg.scope);
-        // Notify app that SW is ready
+        console.log('[SW] OK scope:', reg.scope);
         window._swReg = reg;
         document.dispatchEvent(new Event('sw-ready'));
       })
-      .catch(function(err) { console.error('[SW] Failed:', err); });
+      .catch(function(e) { console.warn('[SW] fail:', e.message); });
   });
 }
 </script>
@@ -3002,16 +3000,13 @@ let swReg=null;
 let deferredPrompt=null;
 
 async function registerSW(){
-  // Already registered via <head> inline script
+  // Already registered in <head> — just sync reference
   if(window._swReg){ swReg = window._swReg; return; }
-  if(!('serviceWorker' in navigator)){
-    console.warn('SW: not supported');return;
-  }
+  if(!('serviceWorker' in navigator)){ return; }
   try{
-    const swUrl = new URL('./sw.js', location.href).href;
-    swReg = await navigator.serviceWorker.register(swUrl, {scope: './'});
+    swReg = await navigator.serviceWorker.register('sw.js');
     window._swReg = swReg;
-    console.log('✅ SW registered scope:', swReg.scope);
+    console.log('✅ SW scope:', swReg.scope);
 
     // Listen for messages
     navigator.serviceWorker.addEventListener('message', e => {
